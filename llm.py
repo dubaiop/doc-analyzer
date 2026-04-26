@@ -106,6 +106,39 @@ def _ask_gemini(model: str, api_key: str, system: str, messages: list[dict]) -> 
     return response.text
 
 
+def analyze_video_with_openrouter(frames: list[dict], prompt: str) -> str:
+    """
+    Send video frames to OpenRouter's free Llama 3.2 Vision model.
+    Uses at most 4 frames to stay within free-tier payload limits.
+    """
+    api_key = os.environ.get("OPENROUTER_API_KEY", "")
+    if not api_key:
+        raise ValueError("OPENROUTER_API_KEY not set — required for OpenRouter vision")
+
+    sample = frames[:4]  # keep payload manageable on free tier
+    content: list[dict] = []
+    for f in sample:
+        content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{f['b64']}"}})
+        content.append({"type": "text", "text": f"Frame at {f['time']}"})
+    content.append({"type": "text", "text": prompt})
+
+    payload = {
+        "model": "meta-llama/llama-3.2-11b-vision-instruct:free",
+        "messages": [{"role": "user", "content": content}],
+        "max_tokens": 2048,
+        "temperature": 0.4,
+    }
+    resp = httpx.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        json=payload,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        timeout=90,
+    )
+    if not resp.is_success:
+        raise ValueError(f"OpenRouter vision error {resp.status_code}: {resp.text[:300]}")
+    return resp.json()["choices"][0]["message"]["content"]
+
+
 def analyze_video_with_gemini(frames: list[dict], prompt: str) -> str:
     """
     frames: list of {"b64": str, "time": "M:SS"}

@@ -434,15 +434,33 @@
         <button class="btn btn-secondary" id="btn-translate" disabled onclick="runAction('translate')">
           🌐 Translate
         </button>
+        <hr style="border:none;border-top:1px solid var(--border);margin:4px 0;" />
+        <button class="btn btn-secondary" id="btn-gen-video" disabled onclick="generateVideo()"
+          style="background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(37,99,235,0.15));border-color:var(--accent);">
+          🎬 Generate Video with Voice
+        </button>
+        <div id="gen-video-info" style="display:none;font-size:0.75rem;color:var(--text-muted);text-align:center;line-height:1.4;">
+          Generates a voiced presentation<br>video from your document (~1 min)
+        </div>
       </div>
     </div>
 
     <!-- Actions (video) -->
     <div class="card" id="video-actions-card" style="display:none;">
-      <h2>Video Analysis <span style="font-size:0.7rem;color:var(--text-muted);">Gemini Vision</span></h2>
+      <h2>Video Analysis <span style="font-size:0.7rem;color:var(--text-muted);">Vision AI</span></h2>
       <div class="video-panel">
         <div class="frame-strip" id="frame-strip"></div>
         <p id="frame-count"></p>
+        <!-- Vision provider toggle -->
+        <div style="display:flex;gap:6px;">
+          <button id="vp-gemini" class="btn btn-primary" style="flex:1;font-size:0.78rem;padding:7px 6px;"
+            onclick="setVisionProvider('gemini')">Gemini</button>
+          <button id="vp-openrouter" class="btn btn-secondary" style="flex:1;font-size:0.78rem;padding:7px 6px;"
+            onclick="setVisionProvider('openrouter')">OpenRouter</button>
+        </div>
+        <p id="vp-label" style="font-size:0.72rem;color:var(--text-muted);text-align:center;margin-top:-2px;">
+          Gemini 2.0 Flash · free
+        </p>
         <button class="btn-analyze-video" id="btn-analyze-video" onclick="analyzeVideo('summarize')">
           🎬 Analyze Video
         </button>
@@ -599,7 +617,7 @@
     document.getElementById('video-actions-card').style.display = isVideo ? '' : 'none';
     document.getElementById('provider-card').style.display = isVideo ? 'none' : '';
     if (isVideo) {
-      document.getElementById('frame-count').textContent = `${doc.frames} frames extracted — using Gemini Vision (free)`;
+      document.getElementById('frame-count').textContent = `${doc.frames} frames extracted`;
     }
     setActionsEnabled(!isVideo);
     renderChatView(docId);
@@ -711,11 +729,12 @@
   }
 
   function setActionsEnabled(on) {
-    ['btn-summarize','btn-keypoints','btn-translate','btn-clear'].forEach(id => {
+    ['btn-summarize','btn-keypoints','btn-translate','btn-clear','btn-gen-video'].forEach(id => {
       document.getElementById(id).disabled = !on;
     });
     document.getElementById('question').disabled = !on;
     document.getElementById('btn-send').disabled = !on;
+    document.getElementById('gen-video-info').style.display = on ? '' : 'none';
   }
 
   function autoResize(el) {
@@ -728,6 +747,19 @@
   }
 
   // ── Video analysis ────────────────────────────────────────────
+  let _visionProvider = 'gemini';
+
+  function setVisionProvider(p) {
+    _visionProvider = p;
+    const labels = {
+      gemini: 'Gemini 2.0 Flash · free',
+      openrouter: 'Llama 3.2 Vision · free',
+    };
+    document.getElementById('vp-label').textContent = labels[p] || p;
+    document.getElementById('vp-gemini').className = 'btn ' + (p === 'gemini' ? 'btn-primary' : 'btn-secondary');
+    document.getElementById('vp-openrouter').className = 'btn ' + (p === 'openrouter' ? 'btn-primary' : 'btn-secondary');
+  }
+
   async function analyzeVideo(mode) {
     if (!activeDocId) return;
     const prompts = {
@@ -737,15 +769,16 @@
     };
     const labels = { summarize: 'Analyze Video', keymoments: 'Key Moments', technical: 'Technical Details' };
     const prompt = prompts[mode];
+    const providerLabel = _visionProvider === 'openrouter' ? 'Llama Vision' : 'Gemini Vision';
 
     document.getElementById('btn-analyze-video').disabled = true;
     addMsg('user', `[${labels[mode]}]`);
-    const spinner = addMsg('assistant', '<span class="spinner"></span> Analyzing with Gemini Vision...');
+    const spinner = addMsg('assistant', `<span class="spinner"></span> Analyzing with ${providerLabel}...`);
     try {
       const res = await fetch('/api/video-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ doc_id: activeDocId, prompt }),
+        body: JSON.stringify({ doc_id: activeDocId, prompt, vision_provider: _visionProvider }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail);
@@ -756,6 +789,61 @@
       spinner.textContent = `❌ ${e.message}`;
     }
     document.getElementById('btn-analyze-video').disabled = false;
+  }
+
+  // ── Video generation ──────────────────────────────────────────
+  let _genPollTimer = null;
+
+  async function generateVideo() {
+    if (!activeDocId) return;
+    const provider = document.getElementById('provider-select').value;
+    document.getElementById('btn-gen-video').disabled = true;
+
+    addMsg('user', '[Generate Video with Voice]');
+    const statusDiv = addMsg('assistant', '<span class="spinner"></span> Asking AI to write presentation script...');
+
+    try {
+      const res = await fetch('/api/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doc_id: activeDocId, provider, lang: 'en' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail);
+    } catch(e) {
+      statusDiv.innerHTML = `❌ ${e.message}`;
+      document.getElementById('btn-gen-video').disabled = false;
+      return;
+    }
+
+    statusDiv.innerHTML = '<span class="spinner"></span> Generating slides & recording voiceover... (~60 sec)';
+    const docId = activeDocId;
+    if (_genPollTimer) clearInterval(_genPollTimer);
+    _genPollTimer = setInterval(() => pollVideoStatus(docId, statusDiv), 4000);
+  }
+
+  async function pollVideoStatus(docId, statusDiv) {
+    try {
+      const res = await fetch(`/api/video-status/${docId}`);
+      const data = await res.json();
+      if (data.status === 'ready') {
+        clearInterval(_genPollTimer);
+        const title = data.title || 'Presentation';
+        statusDiv.innerHTML =
+          `✅ <strong>${escHtml(title)}</strong><br>` +
+          `<a href="/api/download-video/${docId}" download ` +
+          `style="display:inline-block;margin-top:8px;padding:8px 20px;` +
+          `background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;` +
+          `border-radius:8px;text-decoration:none;font-weight:700;font-size:0.88rem;">` +
+          `⬇ Download MP4</a>`;
+        document.getElementById('btn-gen-video').disabled = false;
+        pushToView(docId, 'assistant', `Video ready: ${title}`);
+      } else if (data.status === 'error') {
+        clearInterval(_genPollTimer);
+        statusDiv.textContent = `❌ ${data.detail}`;
+        document.getElementById('btn-gen-video').disabled = false;
+      }
+    } catch(_) {}
   }
 
   // ── Boot ──────────────────────────────────────────────────────

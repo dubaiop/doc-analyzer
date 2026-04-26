@@ -1,12 +1,14 @@
 import os
 import json
+import re
 from pathlib import Path
 from datetime import datetime
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from parsers import parse_document
-from llm import ask_llm, get_available_providers, analyze_video_with_gemini
+from llm import ask_llm, get_available_providers, analyze_video_with_gemini, analyze_video_with_openrouter
 
 app = FastAPI(title="Doc Analyzer")
 
@@ -31,6 +33,15 @@ class ActionRequest(BaseModel):
 class VideoAnalyzeRequest(BaseModel):
     doc_id: str
     prompt: str = "Analyze this video professionally. Describe what is happening, identify key moments, and provide a detailed summary."
+    vision_provider: str = "gemini"  # gemini | openrouter
+
+class VideoGenRequest(BaseModel):
+    doc_id: str
+    provider: str
+    lang: str = "en"
+
+# in-memory generation status (keyed by doc_id)
+_gen_status: dict[str, dict] = {}
 
 
 # ── Storage helpers ───────────────────────────────────────────────────────────
@@ -176,7 +187,10 @@ def video_analyze(req: VideoAnalyzeRequest):
     if not frames:
         raise HTTPException(status_code=404, detail="No frames found. Please re-upload the video.")
     try:
-        result = analyze_video_with_gemini(frames, req.prompt)
+        if req.vision_provider == "openrouter":
+            result = analyze_video_with_openrouter(frames, req.prompt)
+        else:
+            result = analyze_video_with_gemini(frames, req.prompt)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -242,6 +256,86 @@ def chat(req: ChatRequest):
     history.append({"role": "assistant", "content": answer})
     _save_history(req.doc_id, history)
     return {"answer": answer}
+
+
+# ── Video generation ──────────────────────────────────────────────────────────
+
+def _do_generate_video(doc_id: str, provider: str, text: str, lang: str):
+    from video_generator import build_video
+
+    system = (
+        "You are a presentation scriptwriter. "
+        "Return ONLY a valid JSON object — no markdown, no code fences, no extra text."
+    )
+    user_msg = (
+        "Create exactly 5 slides for a professional video presentation from the document below. "
+        'Return this exact JSON: {"title":"...","slides":[{"title":"...","body":"...","narration":"..."}]}\n'
+        "narration should be 2-3 natural spoken sentences per slide.\n\n"
+        f"Document:\n{text[:6000]}"
+    )
+
+    try:
+        raw = ask_llm(provider, system, [{"role": "user", "content": user_msg}])
+    except Exception as e:
+        _gen_status[doc_id] = {"status": "error", "detail": str(e)}
+        return
+
+    raw = raw.strip()
+    if "```" in raw:
+        parts = raw.split("```")
+        raw = parts[1] if len(parts) > 1 else parts[0]
+        if raw.startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip().rstrip("`").strip()
+
+    try:
+        script = json.loads(raw)
+    except Exception:
+        m = re.search(r'\{.*\}', raw, re.DOTALL)
+        if m:
+            try:
+                script = json.loads(m.group())
+            except Exception:
+                _gen_status[doc_id] = {"status": "error", "detail": "LLM returned invalid JSON. Try Groq or Gemini provider."}
+                return
+        else:
+            _gen_status[doc_id] = {"status": "error", "detail": "LLM did not return JSON. Try a different provider."}
+            return
+
+    slides = script.get("slides", [])
+    if not slides:
+        _gen_status[doc_id] = {"status": "error", "detail": "No slides generated."}
+        return
+
+    output_path = str(STORAGE / f"{doc_id}.generated.mp4")
+    try:
+        build_video(slides, output_path, lang=lang)
+        _gen_status[doc_id] = {"status": "ready", "title": script.get("title", "Presentation")}
+    except Exception as e:
+        _gen_status[doc_id] = {"status": "error", "detail": f"Video build failed: {e}"}
+
+
+@app.post("/api/generate-video")
+def generate_video_endpoint(req: VideoGenRequest, background_tasks: BackgroundTasks):
+    text = _get_doc(req.doc_id)
+    _gen_status[req.doc_id] = {"status": "generating"}
+    background_tasks.add_task(_do_generate_video, req.doc_id, req.provider, text, req.lang)
+    return {"status": "generating"}
+
+
+@app.get("/api/video-status/{doc_id}")
+def video_status(doc_id: str):
+    return _gen_status.get(doc_id, {"status": "idle"})
+
+
+@app.get("/api/download-video/{doc_id}")
+def download_video(doc_id: str):
+    path = STORAGE / f"{doc_id}.generated.mp4"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="No generated video found.")
+    meta = _load_meta(doc_id)
+    base = meta.get("name", doc_id).rsplit(".", 1)[0] if meta else doc_id
+    return FileResponse(str(path), media_type="video/mp4", filename=f"{base}_presentation.mp4")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

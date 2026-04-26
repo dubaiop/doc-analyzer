@@ -3,6 +3,12 @@ import httpx
 
 
 PROVIDERS = {
+    "llamafile": {
+        "label": "Qwen3.5 0.8B (Local — Free)",
+        "base_url": "http://localhost:8080/v1/chat/completions",
+        "model": "Qwen3.5-0.8B",
+        "key_env": "",  # no key needed
+    },
     "groq": {
         "label": "Groq (Llama 3.3 70B) — Free",
         "base_url": "https://api.groq.com/openai/v1/chat/completions",
@@ -35,7 +41,7 @@ def get_available_providers() -> list[dict]:
         {
             "id": key,
             "label": cfg["label"],
-            "configured": bool(os.environ.get(cfg["key_env"], "")),
+            "configured": True if not cfg["key_env"] else bool(os.environ.get(cfg["key_env"], "")),
         }
         for key, cfg in PROVIDERS.items()
     ]
@@ -50,8 +56,8 @@ def ask_llm(provider_id: str, system_prompt: str, messages: list[dict]) -> str:
     if not cfg:
         raise ValueError(f"Unknown provider: {provider_id}")
 
-    api_key = os.environ.get(cfg["key_env"], "")
-    if not api_key:
+    api_key = os.environ.get(cfg["key_env"], "") if cfg["key_env"] else "no-key"
+    if cfg["key_env"] and not api_key:
         raise ValueError(f"API key not set for {provider_id} — set {cfg['key_env']} in your .env")
 
     if provider_id == "gemini":
@@ -88,7 +94,6 @@ def _ask_gemini(model: str, api_key: str, system: str, messages: list[dict]) -> 
     genai.configure(api_key=api_key)
     m = genai.GenerativeModel(model, system_instruction=system)
 
-    # Convert history to Gemini format
     history = []
     for msg in messages[:-1]:
         history.append({
@@ -99,3 +104,41 @@ def _ask_gemini(model: str, api_key: str, system: str, messages: list[dict]) -> 
     chat = m.start_chat(history=history)
     response = chat.send_message(messages[-1]["content"])
     return response.text
+
+
+def analyze_video_with_gemini(frames: list[dict], prompt: str) -> str:
+    """
+    frames: list of {"b64": str, "time": "M:SS"}
+    Sends frames as inline images to Gemini 2.0 Flash for video analysis.
+    """
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY not set — required for video analysis")
+
+    parts: list[dict] = []
+    for f in frames:
+        parts.append({"inlineData": {"mimeType": "image/jpeg", "data": f["b64"]}})
+        parts.append({"text": f"Frame at {f['time']}"})
+    parts.append({"text": prompt})
+
+    body = {
+        "contents": [{"role": "user", "parts": parts}],
+        "systemInstruction": {
+            "parts": [{"text": (
+                "You are a professional video analyst. Analyze the provided video frames "
+                "and give a detailed, structured response about the video content."
+            )}]
+        },
+        "generationConfig": {"maxOutputTokens": 2048, "temperature": 0.4},
+    }
+
+    resp = httpx.post(
+        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
+        json=body,
+        timeout=60,
+    )
+    if not resp.is_success:
+        raise ValueError(f"Gemini vision error {resp.status_code}: {resp.text[:300]}")
+
+    data = resp.json()
+    return data["candidates"][0]["content"]["parts"][0]["text"]

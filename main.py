@@ -6,13 +6,14 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from parsers import parse_document
-from llm import ask_llm, get_available_providers
+from llm import ask_llm, get_available_providers, analyze_video_with_gemini
 
 app = FastAPI(title="Doc Analyzer")
 
-# Persist documents to disk so they survive server restarts
 STORAGE = Path(os.environ.get("STORAGE_DIR", "/tmp/doc-analyzer"))
 STORAGE.mkdir(parents=True, exist_ok=True)
+
+VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -27,11 +28,18 @@ class ActionRequest(BaseModel):
     provider: str
     action: str  # summarize | keypoints | translate
 
+class VideoAnalyzeRequest(BaseModel):
+    doc_id: str
+    prompt: str = "Analyze this video professionally. Describe what is happening, identify key moments, and provide a detailed summary."
+
 
 # ── Storage helpers ───────────────────────────────────────────────────────────
 
 def _doc_path(doc_id: str) -> Path:
     return STORAGE / f"{doc_id}.txt"
+
+def _frames_path(doc_id: str) -> Path:
+    return STORAGE / f"{doc_id}.frames.json"
 
 def _meta_path(doc_id: str) -> Path:
     return STORAGE / f"{doc_id}.meta.json"
@@ -45,6 +53,13 @@ def _save_text(doc_id: str, text: str):
 def _load_text(doc_id: str) -> str | None:
     p = _doc_path(doc_id)
     return p.read_text(encoding="utf-8") if p.exists() else None
+
+def _save_frames(doc_id: str, frames: list):
+    _frames_path(doc_id).write_text(json.dumps(frames), encoding="utf-8")
+
+def _load_frames(doc_id: str) -> list:
+    p = _frames_path(doc_id)
+    return json.loads(p.read_text()) if p.exists() else []
 
 def _save_meta(doc_id: str, meta: dict):
     _meta_path(doc_id).write_text(json.dumps(meta), encoding="utf-8")
@@ -61,14 +76,11 @@ def _load_history(doc_id: str) -> list:
     return json.loads(p.read_text()) if p.exists() else []
 
 def _delete_doc_files(doc_id: str):
-    for p in [_doc_path(doc_id), _meta_path(doc_id), _history_path(doc_id)]:
+    for p in [_doc_path(doc_id), _meta_path(doc_id), _history_path(doc_id), _frames_path(doc_id)]:
         p.unlink(missing_ok=True)
 
 def _list_all_meta() -> list[dict]:
-    return [
-        json.loads(p.read_text())
-        for p in STORAGE.glob("*.meta.json")
-    ]
+    return [json.loads(p.read_text()) for p in STORAGE.glob("*.meta.json")]
 
 
 # ── Provider ──────────────────────────────────────────────────────────────────
@@ -88,6 +100,33 @@ def list_documents():
 @app.post("/api/upload")
 async def upload(file: UploadFile = File(...)):
     content = await file.read()
+    ext = Path(file.filename).suffix.lower()
+
+    # ── Video upload ──────────────────────────────────────────────────────────
+    if ext in VIDEO_EXTS:
+        if len(content) > 500 * 1024 * 1024:  # 500 MB limit for video
+            raise HTTPException(status_code=400, detail="Video too large (max 500 MB)")
+        try:
+            from video_parser import extract_video_frames
+            frames = extract_video_frames(content, num_frames=6)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Could not extract frames: {e}")
+
+        doc_id = file.filename.replace(" ", "_")
+        meta = {
+            "doc_id": doc_id,
+            "name": file.filename,
+            "type": "video",
+            "frames": len(frames),
+            "uploaded_at": datetime.utcnow().isoformat(),
+        }
+        _save_frames(doc_id, frames)
+        _save_text(doc_id, f"[Video: {file.filename}]")
+        _save_meta(doc_id, meta)
+        _save_history(doc_id, [])
+        return {"doc_id": doc_id, "type": "video", "frames": len(frames)}
+
+    # ── Document upload ───────────────────────────────────────────────────────
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large (max 10 MB)")
     try:
@@ -99,15 +138,15 @@ async def upload(file: UploadFile = File(...)):
     meta = {
         "doc_id": doc_id,
         "name": file.filename,
+        "type": "document",
         "chars": len(text),
         "uploaded_at": datetime.utcnow().isoformat(),
     }
     _save_text(doc_id, text)
     _save_meta(doc_id, meta)
     _save_history(doc_id, [])
-
     preview = text[:300] + ("..." if len(text) > 300 else "")
-    return {"doc_id": doc_id, "chars": len(text), "preview": preview}
+    return {"doc_id": doc_id, "type": "document", "chars": len(text), "preview": preview}
 
 
 @app.delete("/api/documents/{doc_id}")
@@ -129,7 +168,26 @@ def clear_history(doc_id: str):
     return {"ok": True}
 
 
-# ── Analysis ──────────────────────────────────────────────────────────────────
+# ── Video analysis ────────────────────────────────────────────────────────────
+
+@app.post("/api/video-analyze")
+def video_analyze(req: VideoAnalyzeRequest):
+    frames = _load_frames(req.doc_id)
+    if not frames:
+        raise HTTPException(status_code=404, detail="No frames found. Please re-upload the video.")
+    try:
+        result = analyze_video_with_gemini(frames, req.prompt)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    history = _load_history(req.doc_id)
+    history.append({"role": "user", "content": req.prompt})
+    history.append({"role": "assistant", "content": result})
+    _save_history(req.doc_id, history)
+    return {"result": result}
+
+
+# ── Document analysis ─────────────────────────────────────────────────────────
 
 @app.post("/api/action")
 def run_action(req: ActionRequest):
@@ -173,10 +231,8 @@ def chat(req: ChatRequest):
         "If the answer is not in the document, say so clearly.\n\n"
         f"Document:\n{text[:8000]}"
     )
-
     history = _load_history(req.doc_id)
     messages = history + [{"role": "user", "content": req.question}]
-
     try:
         answer = ask_llm(req.provider, system, messages)
     except Exception as e:

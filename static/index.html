@@ -129,6 +129,45 @@
     #drop-zone strong { color: var(--accent); }
     #file-input { display: none; }
 
+    /* Video panel */
+    .video-panel {
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .video-panel p { font-size: 0.82rem; color: var(--text-muted); }
+    .frame-strip {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .frame-strip img {
+      width: 72px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border2);
+      flex-shrink: 0;
+    }
+    .btn-analyze-video {
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: #fff;
+      border: none;
+      border-radius: 9px;
+      padding: 11px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-analyze-video:hover:not(:disabled) { opacity: 0.85; }
+    .btn-analyze-video:disabled { opacity: 0.4; cursor: not-allowed; }
+
     /* ── Document list ────────────────────────────────────────── */
     #doc-list { display: flex; flex-direction: column; gap: 6px; }
     .doc-item {
@@ -361,9 +400,9 @@
       <div id="drop-zone" onclick="document.getElementById('file-input').click()">
         <div class="icon">📄</div>
         <p>Drop file or <strong>click to browse</strong></p>
-        <p style="margin-top:4px;font-size:0.75rem;">PDF · DOCX · TXT · MD · CSV</p>
+        <p style="margin-top:4px;font-size:0.75rem;">PDF · DOCX · TXT · MD · CSV · MP4 · MOV · AVI</p>
       </div>
-      <input type="file" id="file-input" accept=".pdf,.docx,.txt,.md,.csv" />
+      <input type="file" id="file-input" accept=".pdf,.docx,.txt,.md,.csv,.mp4,.mov,.avi,.mkv,.webm" />
     </div>
 
     <!-- Document list -->
@@ -375,15 +414,15 @@
     </div>
 
     <!-- Provider -->
-    <div class="card">
+    <div class="card" id="provider-card">
       <h2>LLM Provider</h2>
       <select id="provider-select">
         <option value="">Loading...</option>
       </select>
     </div>
 
-    <!-- Actions -->
-    <div class="card">
+    <!-- Actions (documents) -->
+    <div class="card" id="doc-actions-card">
       <h2>Quick Actions</h2>
       <div class="actions">
         <button class="btn btn-primary" id="btn-summarize" disabled onclick="runAction('summarize')">
@@ -394,6 +433,24 @@
         </button>
         <button class="btn btn-secondary" id="btn-translate" disabled onclick="runAction('translate')">
           🌐 Translate
+        </button>
+      </div>
+    </div>
+
+    <!-- Actions (video) -->
+    <div class="card" id="video-actions-card" style="display:none;">
+      <h2>Video Analysis <span style="font-size:0.7rem;color:var(--text-muted);">Gemini Vision</span></h2>
+      <div class="video-panel">
+        <div class="frame-strip" id="frame-strip"></div>
+        <p id="frame-count"></p>
+        <button class="btn-analyze-video" id="btn-analyze-video" onclick="analyzeVideo('summarize')">
+          🎬 Analyze Video
+        </button>
+        <button class="btn btn-secondary" style="font-size:0.82rem;" onclick="analyzeVideo('keymoments')">
+          ⚡ Key Moments
+        </button>
+        <button class="btn btn-secondary" style="font-size:0.82rem;" onclick="analyzeVideo('technical')">
+          🔍 Technical Details
         </button>
       </div>
     </div>
@@ -480,19 +537,26 @@
   });
 
   async function uploadFile(file) {
+    addMsg('system-msg', `Uploading ${file.name}...`);
     const form = new FormData();
     form.append('file', file);
     try {
       const res = await fetch('/api/upload', { method: 'POST', body: form });
       const data = await res.json();
-      if (!res.ok) { alert(data.detail); return; }
+      if (!res.ok) { addMsg('system-msg', `❌ ${data.detail}`); return; }
 
-      docs[data.doc_id] = { doc_id: data.doc_id, name: file.name, chars: data.chars };
+      docs[data.doc_id] = {
+        doc_id: data.doc_id,
+        name: file.name,
+        type: data.type,
+        chars: data.chars || 0,
+        frames: data.frames || 0,
+      };
       chatViews[data.doc_id] = [];
       renderDocList();
       switchDoc(data.doc_id);
     } catch(e) {
-      alert('Upload failed: ' + e.message);
+      addMsg('system-msg', `❌ Upload failed: ${e.message}`);
     }
   }
 
@@ -513,7 +577,7 @@
           <div class="doc-icon">${extIcon(ext)}</div>
           <div class="doc-info">
             <div class="doc-name">${escHtml(d.name)}</div>
-            <div class="doc-meta">${d.chars.toLocaleString()} chars</div>
+            <div class="doc-meta">${d.type === 'video' ? `🎬 ${d.frames} frames` : `${d.chars.toLocaleString()} chars`}</div>
           </div>
           <button class="doc-del" title="Remove" onclick="event.stopPropagation();removeDoc('${id}')">✕</button>
         </div>`;
@@ -521,14 +585,23 @@
   }
 
   function extIcon(ext) {
-    const icons = { PDF: '📕', DOCX: '📘', TXT: '📄', MD: '📝', CSV: '📊' };
+    const icons = { PDF: '📕', DOCX: '📘', TXT: '📄', MD: '📝', CSV: '📊',
+                    MP4: '🎬', MOV: '🎬', AVI: '🎬', MKV: '🎬', WEBM: '🎬' };
     return icons[ext] || '📄';
   }
 
   function switchDoc(docId) {
     activeDocId = docId;
     renderDocList();
-    setActionsEnabled(true);
+    const doc = docs[docId];
+    const isVideo = doc?.type === 'video';
+    document.getElementById('doc-actions-card').style.display = isVideo ? 'none' : '';
+    document.getElementById('video-actions-card').style.display = isVideo ? '' : 'none';
+    document.getElementById('provider-card').style.display = isVideo ? 'none' : '';
+    if (isVideo) {
+      document.getElementById('frame-count').textContent = `${doc.frames} frames extracted — using Gemini Vision (free)`;
+    }
+    setActionsEnabled(!isVideo);
     renderChatView(docId);
   }
 
@@ -652,6 +725,37 @@
 
   function escHtml(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Video analysis ────────────────────────────────────────────
+  async function analyzeVideo(mode) {
+    if (!activeDocId) return;
+    const prompts = {
+      summarize: "Analyze this video professionally. Describe what is happening scene by scene, identify the main subjects, actions, and setting. Provide a detailed professional summary.",
+      keymoments: "Identify and describe the key moments in this video. For each frame, note what is happening and why it might be significant. List them as numbered key moments with timestamps.",
+      technical: "Provide a technical analysis of this video. Analyze the visual composition, lighting, movement quality, and any technical aspects visible in the frames.",
+    };
+    const labels = { summarize: 'Analyze Video', keymoments: 'Key Moments', technical: 'Technical Details' };
+    const prompt = prompts[mode];
+
+    document.getElementById('btn-analyze-video').disabled = true;
+    addMsg('user', `[${labels[mode]}]`);
+    const spinner = addMsg('assistant', '<span class="spinner"></span> Analyzing with Gemini Vision...');
+    try {
+      const res = await fetch('/api/video-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doc_id: activeDocId, prompt }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail);
+      spinner.textContent = data.result;
+      pushToView(activeDocId, 'user', `[${labels[mode]}]`);
+      pushToView(activeDocId, 'assistant', data.result);
+    } catch(e) {
+      spinner.textContent = `❌ ${e.message}`;
+    }
+    document.getElementById('btn-analyze-video').disabled = false;
   }
 
   // ── Boot ──────────────────────────────────────────────────────

@@ -10,9 +10,9 @@ PROVIDERS = {
         "key_env": "GROQ_API_KEY",
     },
     "openrouter": {
-        "label": "OpenRouter (Gemma 3 12B) — Free",
+        "label": "OpenRouter (Mistral 7B) — Free",
         "base_url": "https://openrouter.ai/api/v1/chat/completions",
-        "model": "google/gemma-3-12b-it:free",
+        "model": "mistralai/mistral-7b-instruct:free",
         "key_env": "OPENROUTER_API_KEY",
     },
     "nvidia_nim": {

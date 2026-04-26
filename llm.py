@@ -10,9 +10,9 @@ PROVIDERS = {
         "key_env": "GROQ_API_KEY",
     },
     "openrouter": {
-        "label": "OpenRouter (Llama 3.1 8B) — Free",
+        "label": "OpenRouter (Gemma 3 12B) — Free",
         "base_url": "https://openrouter.ai/api/v1/chat/completions",
-        "model": "meta-llama/llama-3.1-8b-instruct:free",
+        "model": "google/gemma-3-12b-it:free",
         "key_env": "OPENROUTER_API_KEY",
     },
     "nvidia_nim": {
@@ -22,9 +22,9 @@ PROVIDERS = {
         "key_env": "NVIDIA_NIM_API_KEY",
     },
     "gemini": {
-        "label": "Google Gemini 2.0 Flash — Free",
+        "label": "Google Gemini 2.0 Flash Lite — Free",
         "base_url": None,
-        "model": "gemini-2.0-flash",
+        "model": "gemini-2.0-flash-lite",
         "key_env": "GEMINI_API_KEY",
     },
 }

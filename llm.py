@@ -3,6 +3,12 @@ import httpx
 
 
 PROVIDERS = {
+    "new_api": {
+        "label": "New API Gateway (All Providers)",
+        "base_url": None,  # built from NEW_API_BASE_URL at runtime
+        "model": None,     # from NEW_API_MODEL env var
+        "key_env": "NEW_API_KEY",
+    },
     "llamafile": {
         "label": "Qwen3.5 0.8B (Local — Free)",
         "base_url": "http://localhost:8080/v1/chat/completions",
@@ -37,14 +43,14 @@ PROVIDERS = {
 
 
 def get_available_providers() -> list[dict]:
-    return [
-        {
-            "id": key,
-            "label": cfg["label"],
-            "configured": True if not cfg["key_env"] else bool(os.environ.get(cfg["key_env"], "")),
-        }
-        for key, cfg in PROVIDERS.items()
-    ]
+    result = []
+    for key, cfg in PROVIDERS.items():
+        if key == "new_api":
+            configured = bool(os.environ.get("NEW_API_BASE_URL")) and bool(os.environ.get("NEW_API_KEY"))
+        else:
+            configured = True if not cfg["key_env"] else bool(os.environ.get(cfg["key_env"], ""))
+        result.append({"id": key, "label": cfg["label"], "configured": configured})
+    return result
 
 
 def ask_llm(provider_id: str, system_prompt: str, messages: list[dict]) -> str:
@@ -55,6 +61,16 @@ def ask_llm(provider_id: str, system_prompt: str, messages: list[dict]) -> str:
     cfg = PROVIDERS.get(provider_id)
     if not cfg:
         raise ValueError(f"Unknown provider: {provider_id}")
+
+    if provider_id == "new_api":
+        base = os.environ.get("NEW_API_BASE_URL", "").rstrip("/")
+        if not base:
+            raise ValueError("NEW_API_BASE_URL not set — add it in Railway environment variables")
+        api_key = os.environ.get("NEW_API_KEY", "")
+        if not api_key:
+            raise ValueError("NEW_API_KEY not set — add it in Railway environment variables")
+        model = os.environ.get("NEW_API_MODEL", "gpt-4o-mini")
+        return _ask_openai_compat(f"{base}/v1/chat/completions", model, api_key, system_prompt, messages)
 
     api_key = os.environ.get(cfg["key_env"], "") if cfg["key_env"] else "no-key"
     if cfg["key_env"] and not api_key:

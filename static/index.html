@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doc Analyzer — AI Powered</title>
+  <style>
+    /* ── Theme variables ───────────────────────────────────────── */
+    :root {
+      --bg:           #0f0f13;
+      --bg2:          #16161f;
+      --bg3:          #1e1e2e;
+      --border:       #2a2a3e;
+      --border2:      #3a3a5c;
+      --text:         #e2e2e8;
+      --text-muted:   #6b6b8a;
+      --accent:       #a78bfa;
+      --accent-btn:   #7c3aed;
+      --accent-hover: #6d28d9;
+      --msg-user-bg:  #4c1d95;
+      --msg-user-txt: #ede9fe;
+      --header-bg:    linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);
+      --doc-active:   #2a1a4e;
+      --doc-hover:    #1e1e2e;
+      --input-bg:     #1e1e2e;
+      --scrollbar:    #3a3a5c;
+    }
+    [data-theme="light"] {
+      --bg:           #f4f4f8;
+      --bg2:          #ffffff;
+      --bg3:          #f0f0f7;
+      --border:       #dddde8;
+      --border2:      #c8c8d8;
+      --text:         #1a1a2e;
+      --text-muted:   #7777a0;
+      --accent:       #7c3aed;
+      --accent-btn:   #7c3aed;
+      --accent-hover: #6d28d9;
+      --msg-user-bg:  #7c3aed;
+      --msg-user-txt: #fff;
+      --header-bg:    linear-gradient(135deg,#ede9fe 0%,#ddd6fe 100%);
+      --doc-active:   #ede9fe;
+      --doc-hover:    #f5f3ff;
+      --input-bg:     #ffffff;
+      --scrollbar:    #c8c8d8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── Header ───────────────────────────────────────────────── */
+    header {
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+    header span { font-size: 0.82rem; color: var(--text-muted); }
+
+    .theme-toggle {
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .theme-toggle:hover { border-color: var(--accent); }
+
+    /* ── Layout ───────────────────────────────────────────────── */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 20px;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+    }
+    .left-col { display: flex; flex-direction: column; gap: 16px; }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      transition: background 0.2s;
+    }
+    .card h2 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+    }
+
+    /* ── Upload ───────────────────────────────────────────────── */
+    #drop-zone {
+      border: 2px dashed var(--border2);
+      border-radius: 10px;
+      padding: 22px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--bg);
+    }
+    #drop-zone:hover, #drop-zone.drag-over {
+      border-color: var(--accent);
+      background: var(--doc-active);
+    }
+    #drop-zone .icon { font-size: 2rem; margin-bottom: 8px; }
+    #drop-zone p { color: var(--text-muted); font-size: 0.85rem; }
+    #drop-zone strong { color: var(--accent); }
+    #file-input { display: none; }
+
+    /* ── Document list ────────────────────────────────────────── */
+    #doc-list { display: flex; flex-direction: column; gap: 6px; }
+    .doc-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      background: var(--bg3);
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      font-size: 0.85rem;
+    }
+    .doc-item:hover { background: var(--doc-hover); border-color: var(--border2); }
+    .doc-item.active {
+      background: var(--doc-active);
+      border-color: var(--accent);
+    }
+    .doc-item .doc-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .doc-item .doc-info { flex: 1; min-width: 0; }
+    .doc-item .doc-name {
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+    }
+    .doc-item .doc-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+    .doc-item .doc-del {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 2px 4px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .doc-item .doc-del:hover { color: #f87171; background: rgba(248,113,113,0.1); }
+
+    .empty-docs {
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      text-align: center;
+      padding: 10px 0;
+    }
+
+    /* ── Provider select ──────────────────────────────────────── */
+    select {
+      width: 100%;
+      background: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 0.88rem;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    select:focus { border-color: var(--accent); }
+    option.unconfigured { color: var(--text-muted); }
+
+    /* ── Action buttons ───────────────────────────────────────── */
+    .actions { display: flex; flex-direction: column; gap: 8px; }
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 9px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-primary { background: var(--accent-btn); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-secondary {
+      background: var(--bg3);
+      color: var(--accent);
+      border: 1px solid var(--border2);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--doc-active);
+      border-color: var(--accent);
+    }
+    .btn-danger {
+      background: var(--bg3);
+      color: #f87171;
+      border: 1px solid var(--border2);
+      font-size: 0.78rem;
+      padding: 7px 12px;
+    }
+    .btn-danger:hover:not(:disabled) { background: rgba(248,113,113,0.1); border-color: #f87171; }
+
+    /* ── Chat panel ───────────────────────────────────────────── */
+    .chat-panel {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 130px);
+      min-height: 500px;
+    }
+    .chat-panel h2 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #chat-box {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 4px 2px 8px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--scrollbar) transparent;
+    }
+
+    .msg {
+      max-width: 86%;
+      padding: 11px 15px;
+      border-radius: 14px;
+      font-size: 0.88rem;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg.user {
+      background: var(--msg-user-bg);
+      color: var(--msg-user-txt);
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.assistant {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+    .msg.system-msg {
+      background: transparent;
+      color: var(--text-muted);
+      font-style: italic;
+      align-self: center;
+      font-size: 0.8rem;
+      border: none;
+      padding: 4px;
+      max-width: 100%;
+      text-align: center;
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      align-items: flex-end;
+    }
+    #question {
+      flex: 1;
+      background: var(--input-bg);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      outline: none;
+      resize: none;
+      min-height: 44px;
+      max-height: 120px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    #question:focus { border-color: var(--accent); }
+    #question::placeholder { color: var(--text-muted); }
+
+    /* ── Spinner ──────────────────────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(167,139,250,0.3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ───────────────────────────────────────────── */
+    @media (max-width: 780px) {
+      .container { grid-template-columns: 1fr; }
+      .chat-panel { height: 500px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div>
+      <h1>Doc Analyzer</h1>
+      <span>AI-powered · Multiple free LLMs · Conversation memory</span>
+    </div>
+  </div>
+  <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()">
+    <span id="theme-icon">☀️</span> <span id="theme-label">Light mode</span>
+  </button>
+</header>
+
+<div class="container">
+  <!-- LEFT PANEL -->
+  <div class="left-col">
+
+    <!-- Upload -->
+    <div class="card">
+      <h2>Upload Document</h2>
+      <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="icon">📄</div>
+        <p>Drop file or <strong>click to browse</strong></p>
+        <p style="margin-top:4px;font-size:0.75rem;">PDF · DOCX · TXT · MD · CSV</p>
+      </div>
+      <input type="file" id="file-input" accept=".pdf,.docx,.txt,.md,.csv" />
+    </div>
+
+    <!-- Document list -->
+    <div class="card">
+      <h2>Documents</h2>
+      <div id="doc-list">
+        <div class="empty-docs">No documents yet</div>
+      </div>
+    </div>
+
+    <!-- Provider -->
+    <div class="card">
+      <h2>LLM Provider</h2>
+      <select id="provider-select">
+        <option value="">Loading...</option>
+      </select>
+    </div>
+
+    <!-- Actions -->
+    <div class="card">
+      <h2>Quick Actions</h2>
+      <div class="actions">
+        <button class="btn btn-primary" id="btn-summarize" disabled onclick="runAction('summarize')">
+          📝 Summarize
+        </button>
+        <button class="btn btn-secondary" id="btn-keypoints" disabled onclick="runAction('keypoints')">
+          🔑 Key Points
+        </button>
+        <button class="btn btn-secondary" id="btn-translate" disabled onclick="runAction('translate')">
+          🌐 Translate
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANEL (chat) -->
+  <div class="card chat-panel">
+    <h2>
+      <span>Chat with Document</span>
+      <button class="btn btn-danger" id="btn-clear" disabled onclick="clearHistory()" style="font-size:0.75rem;padding:5px 10px;">
+        🗑 Clear History
+      </button>
+    </h2>
+    <div id="chat-box">
+      <div class="msg system-msg">Upload a document to start chatting.</div>
+    </div>
+    <div class="chat-input-row">
+      <textarea id="question" placeholder="Ask anything about your document..." disabled rows="1"
+        oninput="autoResize(this)"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
+      <button class="btn btn-primary" id="btn-send" style="height:44px;padding:0 18px;flex-shrink:0;" disabled onclick="sendChat()">
+        Send
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── State ─────────────────────────────────────────────────────
+  let activeDocId = null;
+  let docs = {};        // doc_id -> {doc_id, name, chars}
+  let chatViews = {};   // doc_id -> [{role, content}] — local display cache
+
+  // ── Theme ─────────────────────────────────────────────────────
+  (function initTheme() {
+    const saved = localStorage.getItem('theme') || 'dark';
+    setTheme(saved);
+  })();
+
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    setTheme(current === 'dark' ? 'light' : 'dark');
+  }
+
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('theme', t);
+    document.getElementById('theme-icon').textContent = t === 'dark' ? '☀️' : '🌙';
+    document.getElementById('theme-label').textContent = t === 'dark' ? 'Light mode' : 'Dark mode';
+  }
+
+  // ── Providers ─────────────────────────────────────────────────
+  async function loadProviders() {
+    const res = await fetch('/api/providers');
+    const providers = await res.json();
+    const sel = document.getElementById('provider-select');
+    sel.innerHTML = '';
+    let firstConfigured = null;
+    providers.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.label + (p.configured ? '' : ' ⚠ key missing');
+      if (!p.configured) opt.className = 'unconfigured';
+      else if (!firstConfigured) firstConfigured = p.id;
+      sel.appendChild(opt);
+    });
+    if (firstConfigured) sel.value = firstConfigured;
+  }
+
+  // ── Upload ────────────────────────────────────────────────────
+  const zone = document.getElementById('drop-zone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]);
+  });
+  document.getElementById('file-input').addEventListener('change', e => {
+    if (e.target.files[0]) uploadFile(e.target.files[0]);
+    e.target.value = '';
+  });
+
+  async function uploadFile(file) {
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) { alert(data.detail); return; }
+
+      docs[data.doc_id] = { doc_id: data.doc_id, name: file.name, chars: data.chars };
+      chatViews[data.doc_id] = [];
+      renderDocList();
+      switchDoc(data.doc_id);
+    } catch(e) {
+      alert('Upload failed: ' + e.message);
+    }
+  }
+
+  // ── Document list ─────────────────────────────────────────────
+  function renderDocList() {
+    const list = document.getElementById('doc-list');
+    const ids = Object.keys(docs);
+    if (ids.length === 0) {
+      list.innerHTML = '<div class="empty-docs">No documents yet</div>';
+      return;
+    }
+    list.innerHTML = ids.map(id => {
+      const d = docs[id];
+      const ext = d.name.split('.').pop().toUpperCase();
+      const active = id === activeDocId ? 'active' : '';
+      return `
+        <div class="doc-item ${active}" onclick="switchDoc('${id}')" id="doc-${id}">
+          <div class="doc-icon">${extIcon(ext)}</div>
+          <div class="doc-info">
+            <div class="doc-name">${escHtml(d.name)}</div>
+            <div class="doc-meta">${d.chars.toLocaleString()} chars</div>
+          </div>
+          <button class="doc-del" title="Remove" onclick="event.stopPropagation();removeDoc('${id}')">✕</button>
+        </div>`;
+    }).join('');
+  }
+
+  function extIcon(ext) {
+    const icons = { PDF: '📕', DOCX: '📘', TXT: '📄', MD: '📝', CSV: '📊' };
+    return icons[ext] || '📄';
+  }
+
+  function switchDoc(docId) {
+    activeDocId = docId;
+    renderDocList();
+    setActionsEnabled(true);
+    renderChatView(docId);
+  }
+
+  async function removeDoc(docId) {
+    await fetch(`/api/documents/${docId}`, { method: 'DELETE' });
+    delete docs[docId];
+    delete chatViews[docId];
+    if (activeDocId === docId) {
+      activeDocId = null;
+      setActionsEnabled(false);
+      clearChatUI();
+      addMsg('system-msg', 'Document removed. Upload a new document to continue.');
+    }
+    renderDocList();
+  }
+
+  // ── History & chat view ───────────────────────────────────────
+  function renderChatView(docId) {
+    clearChatUI();
+    const history = chatViews[docId] || [];
+    if (history.length === 0) {
+      addMsg('system-msg', `"${docs[docId]?.name}" loaded. Ask a question or use an action.`);
+    } else {
+      history.forEach(m => addMsg(m.role === 'user' ? 'user' : 'assistant', m.content));
+    }
+  }
+
+  async function clearHistory() {
+    if (!activeDocId) return;
+    await fetch(`/api/clear-history/${activeDocId}`, { method: 'POST' });
+    chatViews[activeDocId] = [];
+    clearChatUI();
+    addMsg('system-msg', 'Conversation history cleared.');
+  }
+
+  // ── Actions ───────────────────────────────────────────────────
+  async function runAction(action) {
+    if (!activeDocId) return;
+    const provider = document.getElementById('provider-select').value;
+    const labels = { summarize: 'Summarize', keypoints: 'Key Points', translate: 'Translate' };
+    pushToView(activeDocId, 'user', `[${labels[action]}]`);
+    addMsg('user', `[${labels[action]}]`);
+    const spinner = addMsg('assistant', '<span class="spinner"></span> Thinking...');
+    try {
+      const res = await fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doc_id: activeDocId, provider, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail);
+      spinner.textContent = data.result;
+      pushToView(activeDocId, 'assistant', data.result);
+    } catch(e) {
+      spinner.textContent = `❌ ${e.message}`;
+    }
+  }
+
+  // ── Chat ──────────────────────────────────────────────────────
+  async function sendChat() {
+    const input = document.getElementById('question');
+    const q = input.value.trim();
+    if (!q || !activeDocId) return;
+    input.value = '';
+    input.style.height = 'auto';
+    const provider = document.getElementById('provider-select').value;
+    pushToView(activeDocId, 'user', q);
+    addMsg('user', q);
+    const spinner = addMsg('assistant', '<span class="spinner"></span> Thinking...');
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doc_id: activeDocId, provider, question: q }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail);
+      spinner.textContent = data.answer;
+      pushToView(activeDocId, 'assistant', data.answer);
+    } catch(e) {
+      spinner.textContent = `❌ ${e.message}`;
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────
+  function pushToView(docId, role, content) {
+    if (!chatViews[docId]) chatViews[docId] = [];
+    chatViews[docId].push({ role, content });
+  }
+
+  function addMsg(role, html) {
+    const box = document.getElementById('chat-box');
+    // Remove "upload to start" placeholder
+    const placeholder = box.querySelector('.system-msg');
+    if (placeholder && role !== 'system-msg') placeholder.remove();
+
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+    div.innerHTML = html;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+    return div;
+  }
+
+  function clearChatUI() {
+    document.getElementById('chat-box').innerHTML = '';
+  }
+
+  function setActionsEnabled(on) {
+    ['btn-summarize','btn-keypoints','btn-translate','btn-clear'].forEach(id => {
+      document.getElementById(id).disabled = !on;
+    });
+    document.getElementById('question').disabled = !on;
+    document.getElementById('btn-send').disabled = !on;
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────
+  loadProviders();
+</script>
+</body>
+</html>

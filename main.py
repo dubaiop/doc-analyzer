@@ -1,4 +1,6 @@
 import os
+import json
+from pathlib import Path
 from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -8,12 +10,9 @@ from llm import ask_llm, get_available_providers
 
 app = FastAPI(title="Doc Analyzer")
 
-# doc_id -> raw text
-_documents: dict[str, str] = {}
-# doc_id -> metadata
-_doc_meta: dict[str, dict] = {}
-# doc_id -> list of {"role": "user"/"assistant", "content": "..."}
-_histories: dict[str, list[dict]] = {}
+# Persist documents to disk so they survive server restarts
+STORAGE = Path(os.environ.get("STORAGE_DIR", "/tmp/doc-analyzer"))
+STORAGE.mkdir(parents=True, exist_ok=True)
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -29,6 +28,49 @@ class ActionRequest(BaseModel):
     action: str  # summarize | keypoints | translate
 
 
+# ── Storage helpers ───────────────────────────────────────────────────────────
+
+def _doc_path(doc_id: str) -> Path:
+    return STORAGE / f"{doc_id}.txt"
+
+def _meta_path(doc_id: str) -> Path:
+    return STORAGE / f"{doc_id}.meta.json"
+
+def _history_path(doc_id: str) -> Path:
+    return STORAGE / f"{doc_id}.history.json"
+
+def _save_text(doc_id: str, text: str):
+    _doc_path(doc_id).write_text(text, encoding="utf-8")
+
+def _load_text(doc_id: str) -> str | None:
+    p = _doc_path(doc_id)
+    return p.read_text(encoding="utf-8") if p.exists() else None
+
+def _save_meta(doc_id: str, meta: dict):
+    _meta_path(doc_id).write_text(json.dumps(meta), encoding="utf-8")
+
+def _load_meta(doc_id: str) -> dict | None:
+    p = _meta_path(doc_id)
+    return json.loads(p.read_text()) if p.exists() else None
+
+def _save_history(doc_id: str, history: list):
+    _history_path(doc_id).write_text(json.dumps(history), encoding="utf-8")
+
+def _load_history(doc_id: str) -> list:
+    p = _history_path(doc_id)
+    return json.loads(p.read_text()) if p.exists() else []
+
+def _delete_doc_files(doc_id: str):
+    for p in [_doc_path(doc_id), _meta_path(doc_id), _history_path(doc_id)]:
+        p.unlink(missing_ok=True)
+
+def _list_all_meta() -> list[dict]:
+    return [
+        json.loads(p.read_text())
+        for p in STORAGE.glob("*.meta.json")
+    ]
+
+
 # ── Provider ──────────────────────────────────────────────────────────────────
 
 @app.get("/api/providers")
@@ -40,7 +82,7 @@ def providers():
 
 @app.get("/api/documents")
 def list_documents():
-    return list(_doc_meta.values())
+    return _list_all_meta()
 
 
 @app.post("/api/upload")
@@ -54,23 +96,23 @@ async def upload(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=str(e))
 
     doc_id = file.filename.replace(" ", "_")
-    _documents[doc_id] = text
-    _histories[doc_id] = []
-    _doc_meta[doc_id] = {
+    meta = {
         "doc_id": doc_id,
         "name": file.filename,
         "chars": len(text),
         "uploaded_at": datetime.utcnow().isoformat(),
     }
+    _save_text(doc_id, text)
+    _save_meta(doc_id, meta)
+    _save_history(doc_id, [])
+
     preview = text[:300] + ("..." if len(text) > 300 else "")
     return {"doc_id": doc_id, "chars": len(text), "preview": preview}
 
 
 @app.delete("/api/documents/{doc_id}")
 def delete_document(doc_id: str):
-    _documents.pop(doc_id, None)
-    _histories.pop(doc_id, None)
-    _doc_meta.pop(doc_id, None)
+    _delete_doc_files(doc_id)
     return {"ok": True}
 
 
@@ -78,12 +120,12 @@ def delete_document(doc_id: str):
 
 @app.get("/api/history/{doc_id}")
 def get_history(doc_id: str):
-    return _histories.get(doc_id, [])
+    return _load_history(doc_id)
 
 
 @app.post("/api/clear-history/{doc_id}")
 def clear_history(doc_id: str):
-    _histories[doc_id] = []
+    _save_history(doc_id, [])
     return {"ok": True}
 
 
@@ -113,12 +155,13 @@ def run_action(req: ActionRequest):
     system, user_msg = prompts[req.action]
     try:
         result = ask_llm(req.provider, system, [{"role": "user", "content": user_msg}])
-    except ValueError as e:
+    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # Save to history
-    _histories[req.doc_id].append({"role": "user", "content": f"[{req.action.capitalize()}]"})
-    _histories[req.doc_id].append({"role": "assistant", "content": result})
+    history = _load_history(req.doc_id)
+    history.append({"role": "user", "content": f"[{req.action.capitalize()}]"})
+    history.append({"role": "assistant", "content": result})
+    _save_history(req.doc_id, history)
     return {"result": result}
 
 
@@ -131,25 +174,24 @@ def chat(req: ChatRequest):
         f"Document:\n{text[:8000]}"
     )
 
-    history = _histories.get(req.doc_id, [])
-    # Build messages: history + new question
+    history = _load_history(req.doc_id)
     messages = history + [{"role": "user", "content": req.question}]
 
     try:
         answer = ask_llm(req.provider, system, messages)
-    except ValueError as e:
+    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # Persist to history
-    _histories[req.doc_id].append({"role": "user", "content": req.question})
-    _histories[req.doc_id].append({"role": "assistant", "content": answer})
+    history.append({"role": "user", "content": req.question})
+    history.append({"role": "assistant", "content": answer})
+    _save_history(req.doc_id, history)
     return {"answer": answer}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _get_doc(doc_id: str) -> str:
-    text = _documents.get(doc_id)
+    text = _load_text(doc_id)
     if not text:
         raise HTTPException(status_code=404, detail="Document not found. Please upload it again.")
     return text

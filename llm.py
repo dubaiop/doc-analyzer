@@ -77,7 +77,8 @@ def _ask_openai_compat(
         "presence_penalty": 0.00,
     }
     resp = httpx.post(base_url, json=payload, headers=headers, timeout=60)
-    resp.raise_for_status()
+    if not resp.is_success:
+        raise ValueError(f"API error {resp.status_code}: {resp.text[:300]}")
     return resp.json()["choices"][0]["message"]["content"]
 
 

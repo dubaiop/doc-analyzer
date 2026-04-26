@@ -22,9 +22,9 @@ PROVIDERS = {
         "key_env": "NVIDIA_NIM_API_KEY",
     },
     "gemini": {
-        "label": "Google Gemini 1.5 Flash — Free",
+        "label": "Google Gemini 2.0 Flash — Free",
         "base_url": None,
-        "model": "gemini-1.5-flash",
+        "model": "gemini-2.0-flash",
         "key_env": "GEMINI_API_KEY",
     },
 }

@@ -16,9 +16,9 @@ PROVIDERS = {
         "key_env": "OPENROUTER_API_KEY",
     },
     "nvidia_nim": {
-        "label": "NVIDIA NIM (Llama 3.1 70B) — Free",
+        "label": "NVIDIA NIM (Llama 4 Maverick) — Free",
         "base_url": "https://integrate.api.nvidia.com/v1/chat/completions",
-        "model": "meta/llama-3.1-70b-instruct",
+        "model": "meta/llama-4-maverick-17b-128e-instruct",
         "key_env": "NVIDIA_NIM_API_KEY",
     },
     "gemini": {
@@ -71,6 +71,10 @@ def _ask_openai_compat(
         "model": model,
         "messages": [{"role": "system", "content": system}] + messages,
         "max_tokens": 2048,
+        "temperature": 1.00,
+        "top_p": 1.00,
+        "frequency_penalty": 0.00,
+        "presence_penalty": 0.00,
     }
     resp = httpx.post(base_url, json=payload, headers=headers, timeout=60)
     resp.raise_for_status()

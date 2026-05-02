@@ -6,94 +6,195 @@
   <title>Sculpt — Your ideas into 3D Magic</title>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
+    @property --angle {
+      syntax: '<angle>';
+      initial-value: 0deg;
+      inherits: false;
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: 'Manrope', sans-serif;
-      background: #f2f2f0;
-      color: #2b2b2b;
+      background: #f5f5f2;
+      color: #1a1a2e;
       min-height: 100vh;
+      overflow-x: hidden;
+      cursor: none;
     }
 
-    /* ── Top label ─────────────────────────────────────────────── */
-    .top-label {
+    /* ── Custom cursor ──────────────────────────────────────────── */
+    .cursor {
       position: fixed;
-      top: 16px;
-      left: 24px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #999;
-      z-index: 100;
+      width: 10px; height: 10px;
+      background: #1e4799;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: width 0.25s, height 0.25s, opacity 0.25s, background 0.25s;
+      mix-blend-mode: multiply;
+    }
+
+    .cursor-ring {
+      position: fixed;
+      width: 38px; height: 38px;
+      border: 1.5px solid rgba(30,71,153,0.35);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+      transition: width 0.3s, height 0.3s, border-color 0.3s;
+    }
+
+    body.hovering .cursor      { width: 18px; height: 18px; opacity: 0.5; }
+    body.hovering .cursor-ring { width: 52px; height: 52px; }
+
+    /* ── Animated background ────────────────────────────────────── */
+    .bg-glow {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .bg-glow::before, .bg-glow::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: 0.22;
+    }
+
+    .bg-glow::before {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, #c4b5fd, transparent 70%);
+      top: -120px; left: -120px;
+      animation: blob-drift-a 14s ease-in-out infinite alternate;
+    }
+
+    .bg-glow::after {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, #93c5fd, transparent 70%);
+      bottom: -100px; right: -100px;
+      animation: blob-drift-b 18s ease-in-out infinite alternate;
+    }
+
+    @keyframes blob-drift-a {
+      0%   { transform: translate(0,0) scale(1); }
+      50%  { transform: translate(80px,60px) scale(1.15); }
+      100% { transform: translate(30px,120px) scale(0.95); }
+    }
+
+    @keyframes blob-drift-b {
+      0%   { transform: translate(0,0) scale(1); }
+      50%  { transform: translate(-70px,-50px) scale(1.1); }
+      100% { transform: translate(-20px,-110px) scale(0.9); }
+    }
+
+    /* Mouse-reactive glow */
+    .cursor-glow {
+      position: fixed;
+      width: 360px; height: 360px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      transform: translate(-50%, -50%);
+      transition: opacity 0.4s;
     }
 
     /* ── Navbar ─────────────────────────────────────────────────── */
     nav {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 48px);
+      max-width: 1080px;
       z-index: 50;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 28px 48px;
+      padding: 13px 24px;
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.9);
+      border-radius: 50px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03);
+      opacity: 0;
+      animation: fade-down 0.7s ease forwards 0.1s;
     }
 
     .nav-logo {
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 700;
-      color: #2b2b2b;
+      color: #1a1a2e;
       letter-spacing: -0.02em;
       text-decoration: none;
       display: flex;
       align-items: center;
-      gap: 2px;
     }
 
-    .nav-logo .plus { font-weight: 300; margin-right: 2px; }
+    .nav-logo .plus { font-weight: 300; margin-right: 1px; }
 
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 40px;
+      gap: 36px;
       list-style: none;
     }
 
     .nav-links a {
-      font-size: 16px;
-      font-weight: 400;
-      color: #4a4a4a;
+      font-size: 15px;
+      font-weight: 500;
+      color: #555;
       text-decoration: none;
+      position: relative;
+      padding-bottom: 2px;
       transition: color 0.2s;
     }
 
-    .nav-links a:hover { color: #2b2b2b; }
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 50%;
+      width: 0; height: 1.5px;
+      background: #1e4799;
+      border-radius: 2px;
+      transform: translateX(-50%);
+      transition: width 0.25s ease;
+    }
 
-    .nav-right { display: flex; align-items: center; }
+    .nav-links a:hover { color: #1a1a2e; }
+    .nav-links a:hover::after { width: 100%; }
 
     .btn-login {
       font-family: 'Manrope', sans-serif;
-      font-size: 15px;
-      font-weight: 500;
-      color: #2b2b2b;
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a2e;
       background: transparent;
-      border: 1.5px solid #c8c8c8;
+      border: 1.5px solid rgba(0,0,0,0.14);
       border-radius: 50px;
-      padding: 9px 22px;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
+      padding: 7px 20px;
+      cursor: none;
       text-decoration: none;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
     }
 
     .btn-login:hover {
-      border-color: #2b2b2b;
-      background: rgba(0,0,0,0.04);
+      background: #1a1a2e;
+      color: #fff;
+      border-color: #1a1a2e;
     }
 
-    /* ── Hero ───────────────────────────────────────────────────── */
+    /* ── Hero section ───────────────────────────────────────────── */
     .hero {
+      position: relative;
+      z-index: 1;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -101,339 +202,522 @@
       justify-content: center;
       text-align: center;
       padding: 0 24px;
+      gap: 0;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #1e4799;
+      background: rgba(30,71,153,0.07);
+      border: 1px solid rgba(30,71,153,0.15);
+      padding: 6px 16px;
+      border-radius: 50px;
+      margin-bottom: 32px;
+      opacity: 0;
+      animation: fade-up 0.6s ease forwards 0.3s;
+    }
+
+    .hero-badge .dot {
+      width: 6px; height: 6px;
+      background: #1e4799;
+      border-radius: 50%;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.4; transform: scale(0.7); }
     }
 
     .hero h1 {
       font-size: 80px;
       font-weight: 700;
-      line-height: 1.08;
-      letter-spacing: -0.03em;
-      color: #2b2b2b;
-      margin-bottom: 8px;
+      line-height: 1.06;
+      letter-spacing: -0.035em;
+      color: #1a1a2e;
+      margin-bottom: 6px;
+      opacity: 0;
+      animation: fade-up 0.7s ease forwards 0.5s;
     }
 
-    .hero h1 .light { font-weight: 300; }
+    .hero h1 .light {
+      font-weight: 300;
+      color: #555;
+      display: block;
+    }
 
     .hero h1 .bold-line {
       display: block;
       font-weight: 800;
+      background: linear-gradient(110deg, #1e4799 0%, #6366f1 45%, #a855f7 70%, #1e4799 100%);
+      background-size: 250% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: fade-up 0.7s ease forwards 0.5s, shimmer 5s linear infinite 1.5s;
+    }
+
+    @keyframes shimmer {
+      to { background-position: 250% center; }
     }
 
     .hero h1 sup {
-      font-size: 32px;
-      font-weight: 300;
+      font-size: 26px;
+      font-weight: 400;
       vertical-align: super;
       line-height: 0;
+      -webkit-text-fill-color: #a855f7;
     }
 
     .hero-subtitle {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 400;
-      color: #777;
-      line-height: 1.5;
-      margin-top: 24px;
-      margin-bottom: 40px;
+      color: #888;
+      line-height: 1.6;
+      margin-top: 22px;
+      margin-bottom: 44px;
       max-width: 400px;
+      opacity: 0;
+      animation: fade-up 0.7s ease forwards 0.7s;
     }
 
-    /* ── CTA Button ─────────────────────────────────────────────── */
-    .btn-cta-wrapper {
+    /* ── CTA button ─────────────────────────────────────────────── */
+    .btn-cta-wrap {
+      opacity: 0;
+      animation: fade-up 0.7s ease forwards 0.9s;
+    }
+
+    .btn-cta-outer {
       position: relative;
       display: inline-block;
       border-radius: 50px;
       padding: 2px;
-      background: linear-gradient(
-        90deg,
-        #e8e8e8 0%,
-        #d0a0f0 20%,
-        #90c0ff 40%,
-        #a0f0d0 60%,
-        #f0f0a0 80%,
-        #e8e8e8 100%
+      background: conic-gradient(
+        from var(--angle),
+        #e2e8f0, #818cf8, #60a5fa, #34d399, #fbbf24, #f472b6, #818cf8, #e2e8f0
       );
+      animation: rotate-border 4s linear infinite;
+    }
+
+    @keyframes rotate-border {
+      to { --angle: 360deg; }
     }
 
     .btn-cta {
-      position: relative;
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       font-family: 'Manrope', sans-serif;
-      font-size: 16px;
-      font-weight: 500;
-      color: #2b2b2b;
-      background: #f2f2f0;
+      font-size: 15px;
+      font-weight: 600;
+      color: #1a1a2e;
+      background: #f5f5f2;
       border: none;
       border-radius: 50px;
-      padding: 14px 28px;
-      cursor: pointer;
-      transition: background 0.2s;
+      padding: 15px 30px;
+      cursor: none;
       text-decoration: none;
+      letter-spacing: -0.01em;
+      transition: background 0.2s, box-shadow 0.3s, transform 0.2s;
+      position: relative;
+      z-index: 1;
     }
 
-    .btn-cta:hover { background: #ebebea; }
+    .btn-cta:hover {
+      background: #fff;
+      box-shadow: 0 10px 36px rgba(99,102,241,0.2);
+    }
 
     .btn-cta .cta-icon {
-      width: 22px;
-      height: 22px;
-      border: 1.5px solid #2b2b2b;
+      width: 22px; height: 22px;
+      border: 1.5px solid #1a1a2e;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 13px;
-      flex-shrink: 0;
+      font-weight: 700;
+    }
+
+    /* ── Stats bar ──────────────────────────────────────────────── */
+    .stats {
+      display: flex;
+      align-items: center;
+      gap: 40px;
+      margin-top: 64px;
+      opacity: 0;
+      animation: fade-up 0.7s ease forwards 1.1s;
+    }
+
+    .stat { text-align: center; }
+
+    .stat-number {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #1a1a2e;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 2px;
+    }
+
+    .stat-sep {
+      width: 1px;
+      height: 28px;
+      background: rgba(0,0,0,0.1);
+    }
+
+    /* ── Scroll hint ────────────────────────────────────────────── */
+    .scroll-hint {
+      position: absolute;
+      bottom: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      opacity: 0;
+      animation: fade-up 0.6s ease forwards 1.4s;
+    }
+
+    .scroll-hint-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #bbb;
+    }
+
+    .scroll-track {
+      width: 20px; height: 32px;
+      border: 1.5px solid #ccc;
+      border-radius: 10px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 5px;
+    }
+
+    .scroll-thumb {
+      width: 4px; height: 7px;
+      background: #aaa;
+      border-radius: 2px;
+      animation: scroll-bounce 1.8s ease-in-out infinite;
+    }
+
+    @keyframes scroll-bounce {
+      0%,100% { transform: translateY(0); opacity: 0.5; }
+      50%      { transform: translateY(10px); opacity: 1; }
     }
 
     /* ── Ice dancer characters ──────────────────────────────────── */
     .skater {
       position: fixed;
-      pointer-events: none;
+      pointer-events: auto;
       z-index: 5;
-      opacity: 0.82;
-      will-change: transform;
-      filter: drop-shadow(0 6px 16px rgba(30,71,153,0.18));
+      filter: drop-shadow(0 8px 20px rgba(30,71,153,0.14));
+      opacity: 0;
+      transition: filter 0.3s;
+      animation: skater-in 0.8s ease forwards;
     }
 
-    .skater-1 {
-      top: 14%;
-      left: 4%;
-      animation: float-1 6s ease-in-out infinite;
+    .skater:hover {
+      filter: drop-shadow(0 12px 28px rgba(30,71,153,0.3)) drop-shadow(0 0 20px rgba(99,102,241,0.25));
+      cursor: none;
     }
 
-    .skater-2 {
-      top: 48%;
-      right: 5%;
-      animation: float-2 7.5s ease-in-out infinite;
+    .skater-1 { top: 12%; left: 3%;   animation-delay: 1.1s; }
+    .skater-2 { top: 44%; right: 3%;  animation-delay: 1.3s; }
+    .skater-3 { bottom: 8%; left: 8%; animation-delay: 1.5s; }
+
+    @keyframes skater-in {
+      from { opacity: 0; transform: translateY(30px) scale(0.9); }
+      to   { opacity: 0.88; transform: translateY(0) scale(1); }
     }
 
-    .skater-3 {
-      bottom: 10%;
-      left: 10%;
-      animation: float-3 8s ease-in-out infinite;
+    /* ── Shared keyframes ───────────────────────────────────────── */
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(22px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
-    @keyframes float-1 {
-      0%, 100% { transform: translateY(0px)   rotate(-2deg); }
-      35%       { transform: translateY(-20px) rotate(2deg);  }
-      65%       { transform: translateY(10px)  rotate(-3deg); }
+    @keyframes fade-down {
+      from { opacity: 0; transform: translate(-50%, -12px); }
+      to   { opacity: 1; transform: translate(-50%, 0); }
     }
 
-    @keyframes float-2 {
-      0%, 100% { transform: translateY(0px)   rotate(2deg);  }
-      40%       { transform: translateY(-16px) rotate(-2deg); }
-      70%       { transform: translateY(12px)  rotate(3deg);  }
-    }
-
-    @keyframes float-3 {
-      0%, 100% { transform: translateY(0px)   rotate(1deg);  }
-      30%       { transform: translateY(14px)  rotate(-2deg); }
-      65%       { transform: translateY(-18px) rotate(2deg);  }
-    }
-
-    /* ── Background blobs ───────────────────────────────────────── */
-    .bg-blob {
-      position: fixed;
-      border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.18;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .blob-1 {
-      width: 500px;
-      height: 500px;
-      background: radial-gradient(circle, #c4b5fd, transparent);
-      top: -100px;
-      left: -100px;
-    }
-
-    .blob-2 {
-      width: 400px;
-      height: 400px;
-      background: radial-gradient(circle, #93c5fd, transparent);
-      bottom: -80px;
-      right: -80px;
-    }
-
-    .hero { position: relative; z-index: 1; }
-    nav   { z-index: 10; }
-
+    /* ── Responsive ─────────────────────────────────────────────── */
     @media (max-width: 768px) {
-      nav { padding: 20px 24px; }
-      .nav-links { gap: 24px; }
+      nav { width: calc(100% - 32px); padding: 10px 18px; }
+      .nav-links { gap: 22px; }
       .hero h1 { font-size: 52px; }
       .hero-subtitle { font-size: 18px; }
-      .skater { transform: scale(0.75); transform-origin: top left; }
+      .stats { gap: 24px; }
     }
 
-    @media (max-width: 520px) {
+    @media (max-width: 560px) {
       .nav-links { display: none; }
       .hero h1 { font-size: 40px; }
-      .hero h1 sup { font-size: 20px; }
+      .hero h1 sup { font-size: 18px; }
+      .stats { display: none; }
+      body { cursor: auto; }
+      .cursor, .cursor-ring { display: none; }
     }
   </style>
 </head>
 <body>
 
-  <div class="bg-blob blob-1"></div>
-  <div class="bg-blob blob-2"></div>
+  <!-- Custom cursor -->
+  <div class="cursor"      id="cursor"></div>
+  <div class="cursor-ring" id="cursor-ring"></div>
+  <div class="cursor-glow" id="cursor-glow"></div>
 
-  <!-- Ice dancer 1: Classic side-hold pose (photo reference) -->
-  <div class="skater skater-1">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 82" width="110" height="90">
-      <!-- WOMAN (left) -->
-      <circle cx="24" cy="11" r="6" fill="#1e4799"/>
+  <!-- Animated background blobs -->
+  <div class="bg-glow"></div>
+
+  <!-- ── Ice dancer 1: Side-hold pose ── -->
+  <div class="skater skater-1" id="sk1">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 82" width="115" height="95">
+      <circle cx="24" cy="11" r="6"   fill="#1e4799"/>
       <circle cx="24" cy="5"  r="3.2" fill="#1e4799"/>
-      <!-- Dress bodice -->
       <path d="M18 17 Q24 13 30 17 L29 31 Q24 29 19 31Z" fill="#1e4799"/>
-      <!-- Flowing dress skirt -->
       <path d="M13 27 Q19 23 30 23 Q33 35 31 52 Q24 48 17 52 Q11 42 13 27Z" fill="#1e4799"/>
-      <!-- Extended back leg (kicked behind) -->
-      <path d="M16 37 Q8 34 2 27" stroke="#1e4799" stroke-width="3" fill="none" stroke-linecap="round"/>
-      <!-- Front supporting leg -->
-      <path d="M23 52 Q22 61 20 72" stroke="#1e4799" stroke-width="3" fill="none" stroke-linecap="round"/>
-      <!-- Skate blade -->
-      <line x1="15" y1="72" x2="25" y2="74" stroke="#8899bb" stroke-width="1.5" stroke-linecap="round"/>
-      <!-- Left arm back -->
-      <path d="M19 21 Q13 18 9 20" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Right arm toward partner -->
+      <path d="M16 37 Q8 34 2 27"  stroke="#1e4799" stroke-width="3"   fill="none" stroke-linecap="round"/>
+      <path d="M23 52 Q22 61 20 72" stroke="#1e4799" stroke-width="3"   fill="none" stroke-linecap="round"/>
+      <line x1="15" y1="72" x2="25" y2="74" stroke="#7b96cc" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M19 21 Q13 18 9 20"  stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
       <path d="M30 20 Q37 17 43 19" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Gold costume accents -->
       <path d="M20 19 Q24 23 22 31" stroke="#d4a843" stroke-width="1.5" fill="none"/>
       <path d="M26 19 Q28 23 27 29" stroke="#d4a843" stroke-width="1.2" fill="none"/>
-
-      <!-- MAN (right, lunge) -->
       <circle cx="72" cy="10" r="6.5" fill="#1e4799"/>
-      <!-- Jacket body -->
       <path d="M62 16 Q72 11 82 16 Q80 34 78 43 Q72 45 66 43 Q64 34 62 16Z" fill="#1e4799"/>
-      <!-- Front lunge leg -->
       <path d="M66 43 Q60 55 56 70" stroke="#1e4799" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-      <!-- Back extended leg -->
       <path d="M78 43 Q83 55 85 70" stroke="#1e4799" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-      <!-- Skate blades -->
-      <line x1="51" y1="70" x2="60" y2="72" stroke="#8899bb" stroke-width="1.5" stroke-linecap="round"/>
-      <line x1="80" y1="70" x2="89" y2="72" stroke="#8899bb" stroke-width="1.5" stroke-linecap="round"/>
-      <!-- Left arm toward woman (shoulder) -->
+      <line x1="51" y1="70" x2="60" y2="72" stroke="#7b96cc" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="80" y1="70" x2="89" y2="72" stroke="#7b96cc" stroke-width="1.5" stroke-linecap="round"/>
       <path d="M62 22 Q52 19 43 19" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Right arm around woman waist -->
       <path d="M63 32 Q54 34 45 36" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Gold collar/cuff accents -->
       <path d="M66 16 Q72 12 78 16" stroke="#d4a843" stroke-width="1.5" fill="none"/>
       <path d="M65 22 Q72 18 79 22" stroke="#d4a843" stroke-width="1.2" fill="none"/>
     </svg>
   </div>
 
-  <!-- Ice dancer 2: Lift pose -->
-  <div class="skater skater-2">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 92" width="72" height="92">
-      <!-- MAN (bottom, lifting) -->
-      <circle cx="36" cy="62" r="6" fill="#1e4799"/>
-      <!-- Jacket -->
+  <!-- ── Ice dancer 2: Lift pose ── -->
+  <div class="skater skater-2" id="sk2">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 92" width="75" height="96">
+      <circle cx="36" cy="62" r="6"   fill="#1e4799"/>
       <path d="M27 68 Q36 63 45 68 Q43 78 41 84 Q36 86 31 84 Q29 78 27 68Z" fill="#1e4799"/>
-      <!-- Legs wide -->
       <path d="M31 84 Q25 88 18 92" stroke="#1e4799" stroke-width="3.5" fill="none" stroke-linecap="round"/>
       <path d="M41 84 Q47 88 54 92" stroke="#1e4799" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-      <!-- Arms raised overhead holding woman -->
       <path d="M27 70 Q20 60 22 48" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
       <path d="M45 70 Q52 60 50 48" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Gold accents -->
-      <path d="M30 68 Q36 64 42 68" stroke="#d4a843" stroke-width="1.5" fill="none"/>
-
-      <!-- WOMAN (top, in lift) -->
+      <path d="M30 68 Q36 64 42 68"  stroke="#d4a843" stroke-width="1.5" fill="none"/>
       <circle cx="36" cy="10" r="5.5" fill="#1e4799"/>
       <circle cx="36" cy="4"  r="3"   fill="#1e4799"/>
-      <!-- Dress bodice -->
       <path d="M29 16 Q36 12 43 16 Q42 28 40 34 Q36 36 32 34 Q30 28 29 16Z" fill="#1e4799"/>
-      <!-- Dress skirt -->
       <path d="M25 28 Q31 24 43 24 Q45 32 43 40 Q36 38 29 40 Q25 35 25 28Z" fill="#1e4799"/>
-      <!-- Arabesque leg extended up-back -->
       <path d="M42 28 Q54 20 60 10" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Other leg down to partner's hands -->
       <path d="M30 36 Q24 42 22 48" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
       <path d="M42 36 Q48 42 50 48" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Graceful arms outstretched -->
-      <path d="M29 18 Q20 14 13 16" stroke="#1e4799" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <path d="M43 18 Q52 14 59 16" stroke="#1e4799" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <!-- Gold accents -->
+      <path d="M29 18 Q20 14 13 16" stroke="#1e4799" stroke-width="2"   fill="none" stroke-linecap="round"/>
+      <path d="M43 18 Q52 14 59 16" stroke="#1e4799" stroke-width="2"   fill="none" stroke-linecap="round"/>
       <path d="M31 18 Q36 14 41 18" stroke="#d4a843" stroke-width="1.5" fill="none"/>
-      <path d="M31 24 Q36 20 41 24" stroke="#d4a843" stroke-width="1.2" fill="none"/>
     </svg>
   </div>
 
-  <!-- Ice dancer 3: Arabesque hold -->
-  <div class="skater skater-3">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 80" width="88" height="80">
-      <!-- MAN (left, holding) -->
+  <!-- ── Ice dancer 3: Arabesque hold ── -->
+  <div class="skater skater-3" id="sk3">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 80" width="92" height="84">
       <circle cx="28" cy="12" r="6" fill="#1e4799"/>
-      <!-- Jacket -->
       <path d="M19 18 Q28 13 37 18 Q36 34 34 42 Q28 44 22 42 Q20 34 19 18Z" fill="#1e4799"/>
-      <!-- Legs -->
       <path d="M22 42 Q18 54 15 66" stroke="#1e4799" stroke-width="3.5" fill="none" stroke-linecap="round"/>
       <path d="M34 42 Q36 54 36 66" stroke="#1e4799" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-      <!-- Skate blades -->
-      <line x1="10" y1="66" x2="19" y2="68" stroke="#8899bb" stroke-width="1.5" stroke-linecap="round"/>
-      <line x1="31" y1="66" x2="40" y2="68" stroke="#8899bb" stroke-width="1.5" stroke-linecap="round"/>
-      <!-- Arms reaching to hold woman's waist -->
+      <line x1="10" y1="66" x2="19" y2="68" stroke="#7b96cc" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="31" y1="66" x2="40" y2="68" stroke="#7b96cc" stroke-width="1.5" stroke-linecap="round"/>
       <path d="M37 24 Q48 22 55 24" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
       <path d="M37 33 Q48 31 53 33" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Gold accents -->
       <path d="M22 18 Q28 14 34 18" stroke="#d4a843" stroke-width="1.5" fill="none"/>
-      <path d="M22 24 Q28 20 34 24" stroke="#d4a843" stroke-width="1.2" fill="none"/>
-
-      <!-- WOMAN (right, arabesque) -->
       <circle cx="64" cy="13" r="5.5" fill="#1e4799"/>
       <circle cx="64" cy="7"  r="3"   fill="#1e4799"/>
-      <!-- Dress bodice -->
       <path d="M57 19 Q64 15 71 19 Q70 30 68 36 Q64 38 60 36 Q58 30 57 19Z" fill="#1e4799"/>
-      <!-- Flowing skirt -->
       <path d="M52 30 Q58 25 70 25 Q72 35 70 46 Q64 44 57 46 Q52 40 52 30Z" fill="#1e4799"/>
-      <!-- Arabesque — leg raised high behind -->
       <path d="M68 30 Q76 22 82 12" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Supporting leg -->
-      <path d="M62 46 Q61 56 58 68" stroke="#1e4799" stroke-width="3" fill="none" stroke-linecap="round"/>
-      <!-- Skate blade -->
-      <line x1="53" y1="68" x2="63" y2="70" stroke="#8899bb" stroke-width="1.5" stroke-linecap="round"/>
-      <!-- Graceful arms -->
-      <path d="M57 21 Q51 17 46 19" stroke="#1e4799" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <path d="M71 21 Q77 17 82 19" stroke="#1e4799" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <!-- Gold accents -->
+      <path d="M62 46 Q61 56 58 68" stroke="#1e4799" stroke-width="3"   fill="none" stroke-linecap="round"/>
+      <line x1="53" y1="68" x2="63" y2="70" stroke="#7b96cc" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M57 21 Q51 17 46 19" stroke="#1e4799" stroke-width="2"   fill="none" stroke-linecap="round"/>
+      <path d="M71 21 Q77 17 82 19" stroke="#1e4799" stroke-width="2"   fill="none" stroke-linecap="round"/>
       <path d="M59 21 Q64 17 69 21" stroke="#d4a843" stroke-width="1.5" fill="none"/>
-      <path d="M59 27 Q64 23 69 27" stroke="#d4a843" stroke-width="1.2" fill="none"/>
     </svg>
   </div>
 
-  <span class="top-label">Sculpt</span>
-
+  <!-- ── Navbar ── -->
   <nav>
-    <a href="#" class="nav-logo"><span class="plus">+</span> Sculpt</a>
+    <a href="#" class="nav-logo"><span class="plus">+</span>Sculpt</a>
     <ul class="nav-links">
       <li><a href="#">Features</a></li>
       <li><a href="#">Inspo</a></li>
       <li><a href="#">Pricing</a></li>
       <li><a href="#">About</a></li>
     </ul>
-    <div class="nav-right">
-      <a href="#" class="btn-login">Log in</a>
-    </div>
+    <div><a href="#" class="btn-login">Log in</a></div>
   </nav>
 
+  <!-- ── Hero ── -->
   <section class="hero">
+
+    <div class="hero-badge">
+      <span class="dot"></span>
+      Now in Public Beta
+    </div>
+
     <h1>
       <span class="light">Your ideas into</span>
       <span class="bold-line">3D Magic<sup>+</sup></span>
     </h1>
+
     <p class="hero-subtitle">
       Sketch, sculpt, and transform<br>concepts into models in a few clicks.
     </p>
-    <div class="btn-cta-wrapper">
-      <a href="#" class="btn-cta">
-        <span class="cta-icon">+</span>
-        Start Creating
-      </a>
+
+    <div class="btn-cta-wrap">
+      <div class="btn-cta-outer" id="btn-magnetic-wrap">
+        <a href="#" class="btn-cta" id="btn-magnetic">
+          <span class="cta-icon">+</span>
+          Start Creating
+        </a>
+      </div>
     </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-number">12k+</div>
+        <div class="stat-label">Creators</div>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat">
+        <div class="stat-number">80k+</div>
+        <div class="stat-label">Models Made</div>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat">
+        <div class="stat-number">4.9★</div>
+        <div class="stat-label">Rating</div>
+      </div>
+    </div>
+
+    <div class="scroll-hint">
+      <div class="scroll-track">
+        <div class="scroll-thumb"></div>
+      </div>
+      <span class="scroll-hint-label">Scroll</span>
+    </div>
+
   </section>
 
+  <script>
+    /* ── Custom cursor ─────────────────────────────────────────── */
+    const cursor     = document.getElementById('cursor');
+    const cursorRing = document.getElementById('cursor-ring');
+    const cursorGlow = document.getElementById('cursor-glow');
+
+    let mx = -200, my = -200;
+    let rx = -200, ry = -200;
+    let gx = -200, gy = -200;
+
+    document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+
+    function tickCursor() {
+      cursor.style.left = mx + 'px';
+      cursor.style.top  = my + 'px';
+
+      rx += (mx - rx) * 0.14;
+      ry += (my - ry) * 0.14;
+      cursorRing.style.left = rx + 'px';
+      cursorRing.style.top  = ry + 'px';
+
+      gx += (mx - gx) * 0.06;
+      gy += (my - gy) * 0.06;
+      cursorGlow.style.left = gx + 'px';
+      cursorGlow.style.top  = gy + 'px';
+
+      requestAnimationFrame(tickCursor);
+    }
+    tickCursor();
+
+    document.querySelectorAll('a, button').forEach(el => {
+      el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
+      el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
+    });
+
+    /* ── Mouse parallax on skaters ─────────────────────────────── */
+    const skaters = [
+      { el: document.getElementById('sk1'), depth: 0.020, cx: 0, cy: 0, tx: 0, ty: 0, floatAmp: 20, floatPeriod: 6200, phase: 0,    rotAmp: 2 },
+      { el: document.getElementById('sk2'), depth: 0.013, cx: 0, cy: 0, tx: 0, ty: 0, floatAmp: 15, floatPeriod: 7600, phase: 2100, rotAmp: 1.5 },
+      { el: document.getElementById('sk3'), depth: 0.024, cx: 0, cy: 0, tx: 0, ty: 0, floatAmp: 18, floatPeriod: 8200, phase: 4400, rotAmp: 2 },
+    ];
+
+    const W2 = window.innerWidth  / 2;
+    const H2 = window.innerHeight / 2;
+
+    document.addEventListener('mousemove', e => {
+      const dx = e.clientX - W2;
+      const dy = e.clientY - H2;
+      skaters.forEach(s => { s.tx = dx * s.depth; s.ty = dy * s.depth; });
+    });
+
+    function tickSkaters(t) {
+      skaters.forEach(s => {
+        s.cx += (s.tx - s.cx) * 0.055;
+        s.cy += (s.ty - s.cy) * 0.055;
+
+        const P   = s.floatPeriod;
+        const fy  = Math.sin((t + s.phase) / (P / (Math.PI * 2))) * s.floatAmp;
+        const fr  = Math.sin((t + s.phase * 0.6) / (P * 0.85 / (Math.PI * 2))) * s.rotAmp;
+
+        s.el.style.transform = `translate(${s.cx}px, ${s.cy + fy}px) rotate(${fr}deg)`;
+      });
+      requestAnimationFrame(tickSkaters);
+    }
+    requestAnimationFrame(tickSkaters);
+
+    /* ── Magnetic CTA button ───────────────────────────────────── */
+    const btnWrap = document.getElementById('btn-magnetic-wrap');
+    const btnEl   = document.getElementById('btn-magnetic');
+
+    btnWrap.addEventListener('mousemove', function(e) {
+      const r  = this.getBoundingClientRect();
+      const dx = e.clientX - r.left - r.width  / 2;
+      const dy = e.clientY - r.top  - r.height / 2;
+      btnEl.style.transform    = `translate(${dx * 0.28}px, ${dy * 0.28}px)`;
+      btnEl.style.transition   = 'transform 0.1s ease, background 0.2s, box-shadow 0.3s';
+    });
+
+    btnWrap.addEventListener('mouseleave', function() {
+      btnEl.style.transform  = 'translate(0,0)';
+      btnEl.style.transition = 'transform 0.6s cubic-bezier(0.23,1,0.32,1), background 0.2s, box-shadow 0.3s';
+    });
+
+    /* ── Skater click spin ─────────────────────────────────────── */
+    skaters.forEach(({ el }) => {
+      el.addEventListener('click', () => {
+        el.style.transition = 'transform 0.6s cubic-bezier(0.34,1.56,0.64,1)';
+        el.style.transform  += ' scale(1.18) rotate(360deg)';
+        setTimeout(() => { el.style.transition = ''; }, 650);
+      });
+    });
+  </script>
 </body>
 </html>

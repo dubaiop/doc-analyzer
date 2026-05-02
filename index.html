@@ -7,285 +7,120 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Manrope', sans-serif;
-      background: #f2f2f0;
-      color: #2b2b2b;
-      min-height: 100vh;
-    }
-
-    .top-label {
-      position: fixed;
-      top: 16px;
-      left: 24px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #999;
-      z-index: 100;
-    }
-
-    nav {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 50;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 28px 48px;
-    }
-
-    .nav-logo {
-      font-size: 18px;
-      font-weight: 700;
-      color: #2b2b2b;
-      letter-spacing: -0.02em;
-      text-decoration: none;
-      display: flex;
-      align-items: center;
-      gap: 2px;
-    }
-
+    body { font-family: 'Manrope', sans-serif; background: #f2f2f0; color: #2b2b2b; min-height: 100vh; }
+    .top-label { position: fixed; top: 16px; left: 24px; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #999; z-index: 100; }
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; padding: 28px 48px; }
+    .nav-logo { font-size: 18px; font-weight: 700; color: #2b2b2b; letter-spacing: -0.02em; text-decoration: none; display: flex; align-items: center; gap: 2px; }
     .nav-logo .plus { font-weight: 300; margin-right: 2px; }
-
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 40px;
-      list-style: none;
-    }
-
-    .nav-links a {
-      font-size: 16px;
-      font-weight: 400;
-      color: #4a4a4a;
-      text-decoration: none;
-      transition: color 0.2s;
-    }
-
+    .nav-links { display: flex; align-items: center; gap: 40px; list-style: none; }
+    .nav-links a { font-size: 16px; font-weight: 400; color: #4a4a4a; text-decoration: none; transition: color 0.2s; }
     .nav-links a:hover { color: #2b2b2b; }
-
     .nav-right { display: flex; align-items: center; }
-
-    .btn-login {
-      font-family: 'Manrope', sans-serif;
-      font-size: 15px;
-      font-weight: 500;
-      color: #2b2b2b;
-      background: transparent;
-      border: 1.5px solid #c8c8c8;
-      border-radius: 50px;
-      padding: 9px 22px;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      text-decoration: none;
-    }
-
-    .btn-login:hover {
-      border-color: #2b2b2b;
-      background: rgba(0,0,0,0.04);
-    }
-
-    .hero {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 0 24px;
-    }
-
-    .hero h1 {
-      font-size: 80px;
-      font-weight: 700;
-      line-height: 1.08;
-      letter-spacing: -0.03em;
-      color: #2b2b2b;
-      margin-bottom: 8px;
-    }
-
+    .btn-login { font-family: 'Manrope', sans-serif; font-size: 15px; font-weight: 500; color: #2b2b2b; background: transparent; border: 1.5px solid #c8c8c8; border-radius: 50px; padding: 9px 22px; cursor: pointer; transition: border-color 0.2s, background 0.2s; text-decoration: none; }
+    .btn-login:hover { border-color: #2b2b2b; background: rgba(0,0,0,0.04); }
+    .hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 24px; }
+    .hero h1 { font-size: 80px; font-weight: 700; line-height: 1.08; letter-spacing: -0.03em; color: #2b2b2b; margin-bottom: 8px; }
     .hero h1 .light { font-weight: 300; }
-
-    .hero h1 .bold-line {
-      display: block;
-      font-weight: 800;
-    }
-
-    .hero h1 sup {
-      font-size: 32px;
-      font-weight: 300;
-      vertical-align: super;
-      line-height: 0;
-    }
-
-    .hero-subtitle {
-      font-size: 24px;
-      font-weight: 400;
-      color: #777;
-      line-height: 1.5;
-      margin-top: 24px;
-      margin-bottom: 40px;
-      max-width: 400px;
-    }
-
-    .btn-cta-wrapper {
-      position: relative;
-      display: inline-block;
-      border-radius: 50px;
-      padding: 2px;
-      background: linear-gradient(
-        90deg,
-        #e8e8e8 0%,
-        #d0a0f0 20%,
-        #90c0ff 40%,
-        #a0f0d0 60%,
-        #f0f0a0 80%,
-        #e8e8e8 100%
-      );
-    }
-
-    .btn-cta {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-family: 'Manrope', sans-serif;
-      font-size: 16px;
-      font-weight: 500;
-      color: #2b2b2b;
-      background: #f2f2f0;
-      border: none;
-      border-radius: 50px;
-      padding: 14px 28px;
-      cursor: pointer;
-      transition: background 0.2s;
-      text-decoration: none;
-    }
-
+    .hero h1 .bold-line { display: block; font-weight: 800; }
+    .hero h1 sup { font-size: 32px; font-weight: 300; vertical-align: super; line-height: 0; }
+    .hero-subtitle { font-size: 24px; font-weight: 400; color: #777; line-height: 1.5; margin-top: 24px; margin-bottom: 40px; max-width: 400px; }
+    .btn-cta-wrapper { position: relative; display: inline-block; border-radius: 50px; padding: 2px; background: linear-gradient(90deg, #e8e8e8 0%, #d0a0f0 20%, #90c0ff 40%, #a0f0d0 60%, #f0f0a0 80%, #e8e8e8 100%); }
+    .btn-cta { position: relative; display: inline-flex; align-items: center; gap: 8px; font-family: 'Manrope', sans-serif; font-size: 16px; font-weight: 500; color: #2b2b2b; background: #f2f2f0; border: none; border-radius: 50px; padding: 14px 28px; cursor: pointer; transition: background 0.2s; text-decoration: none; }
     .btn-cta:hover { background: #ebebea; }
-
-    .btn-cta .cta-icon {
-      width: 22px;
-      height: 22px;
-      border: 1.5px solid #2b2b2b;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      flex-shrink: 0;
-    }
-
-    .banana {
-      position: fixed;
-      font-size: 48px;
-      pointer-events: none;
-      z-index: 5;
-      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.10));
-      will-change: transform;
-    }
-
-    .banana-1 {
-      top: 18%;
-      left: 6%;
-      animation: float-1 6s ease-in-out infinite, spin-slow 14s linear infinite;
-    }
-
-    .banana-2 {
-      top: 55%;
-      right: 7%;
-      animation: float-2 7s ease-in-out infinite, spin-slow 18s linear infinite reverse;
-      font-size: 40px;
-    }
-
-    .banana-3 {
-      bottom: 14%;
-      left: 14%;
-      animation: float-3 8s ease-in-out infinite, spin-slow 20s linear infinite;
-      font-size: 36px;
-    }
-
-    @keyframes float-1 {
-      0%, 100% { transform: translateY(0px)   rotate(0deg); }
-      30%       { transform: translateY(-22px) rotate(6deg); }
-      60%       { transform: translateY(10px)  rotate(-4deg); }
-    }
-
-    @keyframes float-2 {
-      0%, 100% { transform: translateY(0px)   rotate(0deg); }
-      40%       { transform: translateY(-18px) rotate(-8deg); }
-      70%       { transform: translateY(14px)  rotate(5deg); }
-    }
-
-    @keyframes float-3 {
-      0%, 100% { transform: translateY(0px)   rotate(0deg); }
-      25%       { transform: translateY(16px)  rotate(5deg); }
-      65%       { transform: translateY(-20px) rotate(-6deg); }
-    }
-
-    @keyframes spin-slow {
-      from { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.10)) rotate(0deg); }
-      to   { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.10)) rotate(360deg); }
-    }
-
-    .bg-blob {
-      position: fixed;
-      border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.18;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .blob-1 {
-      width: 500px;
-      height: 500px;
-      background: radial-gradient(circle, #c4b5fd, transparent);
-      top: -100px;
-      left: -100px;
-    }
-
-    .blob-2 {
-      width: 400px;
-      height: 400px;
-      background: radial-gradient(circle, #93c5fd, transparent);
-      bottom: -80px;
-      right: -80px;
-    }
-
+    .btn-cta .cta-icon { width: 22px; height: 22px; border: 1.5px solid #2b2b2b; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+    .skater { position: fixed; pointer-events: none; z-index: 5; opacity: 0.82; will-change: transform; filter: drop-shadow(0 6px 16px rgba(30,71,153,0.18)); }
+    .skater-1 { top: 14%; left: 4%; animation: float-1 6s ease-in-out infinite; }
+    .skater-2 { top: 48%; right: 5%; animation: float-2 7.5s ease-in-out infinite; }
+    .skater-3 { bottom: 10%; left: 10%; animation: float-3 8s ease-in-out infinite; }
+    @keyframes float-1 { 0%,100%{transform:translateY(0px) rotate(-2deg)} 35%{transform:translateY(-20px) rotate(2deg)} 65%{transform:translateY(10px) rotate(-3deg)} }
+    @keyframes float-2 { 0%,100%{transform:translateY(0px) rotate(2deg)} 40%{transform:translateY(-16px) rotate(-2deg)} 70%{transform:translateY(12px) rotate(3deg)} }
+    @keyframes float-3 { 0%,100%{transform:translateY(0px) rotate(1deg)} 30%{transform:translateY(14px) rotate(-2deg)} 65%{transform:translateY(-18px) rotate(2deg)} }
+    .bg-blob { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.18; pointer-events: none; z-index: 0; }
+    .blob-1 { width: 500px; height: 500px; background: radial-gradient(circle, #c4b5fd, transparent); top: -100px; left: -100px; }
+    .blob-2 { width: 400px; height: 400px; background: radial-gradient(circle, #93c5fd, transparent); bottom: -80px; right: -80px; }
     .hero { position: relative; z-index: 1; }
     nav { z-index: 10; }
-
-    @media (max-width: 768px) {
-      nav { padding: 20px 24px; }
-      .nav-links { gap: 24px; }
-      .hero h1 { font-size: 52px; }
-      .hero-subtitle { font-size: 18px; }
-    }
-
-    @media (max-width: 520px) {
-      .nav-links { display: none; }
-      .hero h1 { font-size: 40px; }
-      .hero h1 sup { font-size: 20px; }
-    }
+    @media (max-width: 768px) { nav{padding:20px 24px} .nav-links{gap:24px} .hero h1{font-size:52px} .hero-subtitle{font-size:18px} }
+    @media (max-width: 520px) { .nav-links{display:none} .hero h1{font-size:40px} .hero h1 sup{font-size:20px} }
   </style>
 </head>
 <body>
-
   <div class="bg-blob blob-1"></div>
   <div class="bg-blob blob-2"></div>
 
-  <div class="banana banana-1">🍌</div>
-  <div class="banana banana-2">🍌</div>
-  <div class="banana banana-3">🍌</div>
+  <!-- Ice dancer 1: Side-hold pose -->
+  <div class="skater skater-1">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 82" width="110" height="90">
+      <circle cx="24" cy="11" r="6" fill="#1e4799"/><circle cx="24" cy="5" r="3.2" fill="#1e4799"/>
+      <path d="M18 17 Q24 13 30 17 L29 31 Q24 29 19 31Z" fill="#1e4799"/>
+      <path d="M13 27 Q19 23 30 23 Q33 35 31 52 Q24 48 17 52 Q11 42 13 27Z" fill="#1e4799"/>
+      <path d="M16 37 Q8 34 2 27" stroke="#1e4799" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M23 52 Q22 61 20 72" stroke="#1e4799" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <line x1="15" y1="72" x2="25" y2="74" stroke="#8899bb" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M19 21 Q13 18 9 20" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M30 20 Q37 17 43 19" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M20 19 Q24 23 22 31" stroke="#d4a843" stroke-width="1.5" fill="none"/>
+      <path d="M26 19 Q28 23 27 29" stroke="#d4a843" stroke-width="1.2" fill="none"/>
+      <circle cx="72" cy="10" r="6.5" fill="#1e4799"/>
+      <path d="M62 16 Q72 11 82 16 Q80 34 78 43 Q72 45 66 43 Q64 34 62 16Z" fill="#1e4799"/>
+      <path d="M66 43 Q60 55 56 70" stroke="#1e4799" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M78 43 Q83 55 85 70" stroke="#1e4799" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <line x1="51" y1="70" x2="60" y2="72" stroke="#8899bb" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="80" y1="70" x2="89" y2="72" stroke="#8899bb" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M62 22 Q52 19 43 19" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M63 32 Q54 34 45 36" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M66 16 Q72 12 78 16" stroke="#d4a843" stroke-width="1.5" fill="none"/>
+      <path d="M65 22 Q72 18 79 22" stroke="#d4a843" stroke-width="1.2" fill="none"/>
+    </svg>
+  </div>
+
+  <!-- Ice dancer 2: Lift pose -->
+  <div class="skater skater-2">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 92" width="72" height="92">
+      <circle cx="36" cy="62" r="6" fill="#1e4799"/>
+      <path d="M27 68 Q36 63 45 68 Q43 78 41 84 Q36 86 31 84 Q29 78 27 68Z" fill="#1e4799"/>
+      <path d="M31 84 Q25 88 18 92" stroke="#1e4799" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M41 84 Q47 88 54 92" stroke="#1e4799" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M27 70 Q20 60 22 48" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M45 70 Q52 60 50 48" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M30 68 Q36 64 42 68" stroke="#d4a843" stroke-width="1.5" fill="none"/>
+      <circle cx="36" cy="10" r="5.5" fill="#1e4799"/><circle cx="36" cy="4" r="3" fill="#1e4799"/>
+      <path d="M29 16 Q36 12 43 16 Q42 28 40 34 Q36 36 32 34 Q30 28 29 16Z" fill="#1e4799"/>
+      <path d="M25 28 Q31 24 43 24 Q45 32 43 40 Q36 38 29 40 Q25 35 25 28Z" fill="#1e4799"/>
+      <path d="M42 28 Q54 20 60 10" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M30 36 Q24 42 22 48" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M42 36 Q48 42 50 48" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M29 18 Q20 14 13 16" stroke="#1e4799" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M43 18 Q52 14 59 16" stroke="#1e4799" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M31 18 Q36 14 41 18" stroke="#d4a843" stroke-width="1.5" fill="none"/>
+    </svg>
+  </div>
+
+  <!-- Ice dancer 3: Arabesque hold -->
+  <div class="skater skater-3">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 80" width="88" height="80">
+      <circle cx="28" cy="12" r="6" fill="#1e4799"/>
+      <path d="M19 18 Q28 13 37 18 Q36 34 34 42 Q28 44 22 42 Q20 34 19 18Z" fill="#1e4799"/>
+      <path d="M22 42 Q18 54 15 66" stroke="#1e4799" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M34 42 Q36 54 36 66" stroke="#1e4799" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <line x1="10" y1="66" x2="19" y2="68" stroke="#8899bb" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="31" y1="66" x2="40" y2="68" stroke="#8899bb" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M37 24 Q48 22 55 24" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M37 33 Q48 31 53 33" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M22 18 Q28 14 34 18" stroke="#d4a843" stroke-width="1.5" fill="none"/>
+      <circle cx="64" cy="13" r="5.5" fill="#1e4799"/><circle cx="64" cy="7" r="3" fill="#1e4799"/>
+      <path d="M57 19 Q64 15 71 19 Q70 30 68 36 Q64 38 60 36 Q58 30 57 19Z" fill="#1e4799"/>
+      <path d="M52 30 Q58 25 70 25 Q72 35 70 46 Q64 44 57 46 Q52 40 52 30Z" fill="#1e4799"/>
+      <path d="M68 30 Q76 22 82 12" stroke="#1e4799" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M62 46 Q61 56 58 68" stroke="#1e4799" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <line x1="53" y1="68" x2="63" y2="70" stroke="#8899bb" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M57 21 Q51 17 46 19" stroke="#1e4799" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M71 21 Q77 17 82 19" stroke="#1e4799" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M59 21 Q64 17 69 21" stroke="#d4a843" stroke-width="1.5" fill="none"/>
+    </svg>
+  </div>
 
   <span class="top-label">Sculpt</span>
-
   <nav>
     <a href="#" class="nav-logo"><span class="plus">+</span> Sculpt</a>
     <ul class="nav-links">
@@ -294,26 +129,17 @@
       <li><a href="#">Pricing</a></li>
       <li><a href="#">About</a></li>
     </ul>
-    <div class="nav-right">
-      <a href="#" class="btn-login">Log in</a>
-    </div>
+    <div class="nav-right"><a href="#" class="btn-login">Log in</a></div>
   </nav>
-
   <section class="hero">
     <h1>
       <span class="light">Your ideas into</span>
       <span class="bold-line">3D Magic<sup>+</sup></span>
     </h1>
-    <p class="hero-subtitle">
-      Sketch, sculpt, and transform<br>concepts into models in a few clicks.
-    </p>
+    <p class="hero-subtitle">Sketch, sculpt, and transform<br>concepts into models in a few clicks.</p>
     <div class="btn-cta-wrapper">
-      <a href="#" class="btn-cta">
-        <span class="cta-icon">+</span>
-        Start Creating
-      </a>
+      <a href="#" class="btn-cta"><span class="cta-icon">+</span>Start Creating</a>
     </div>
   </section>
-
 </body>
 </html>

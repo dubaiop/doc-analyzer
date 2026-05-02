@@ -191,6 +191,65 @@
       flex-shrink: 0;
     }
 
+    /* ── Banana characters ──────────────────────────────────────── */
+    .banana {
+      position: fixed;
+      font-size: 48px;
+      pointer-events: none;
+      z-index: 5;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.10));
+      will-change: transform;
+    }
+
+    .banana-1 {
+      top: 18%;
+      left: 6%;
+      animation:
+        float-1 6s ease-in-out infinite,
+        spin-slow 14s linear infinite;
+    }
+
+    .banana-2 {
+      top: 55%;
+      right: 7%;
+      animation:
+        float-2 7s ease-in-out infinite,
+        spin-slow 18s linear infinite reverse;
+      font-size: 40px;
+    }
+
+    .banana-3 {
+      bottom: 14%;
+      left: 14%;
+      animation:
+        float-3 8s ease-in-out infinite,
+        spin-slow 20s linear infinite;
+      font-size: 36px;
+    }
+
+    @keyframes float-1 {
+      0%, 100% { transform: translateY(0px)   rotate(0deg); }
+      30%       { transform: translateY(-22px) rotate(6deg); }
+      60%       { transform: translateY(10px)  rotate(-4deg); }
+    }
+
+    @keyframes float-2 {
+      0%, 100% { transform: translateY(0px)   rotate(0deg); }
+      40%       { transform: translateY(-18px) rotate(-8deg); }
+      70%       { transform: translateY(14px)  rotate(5deg); }
+    }
+
+    @keyframes float-3 {
+      0%, 100% { transform: translateY(0px)   rotate(0deg); }
+      25%       { transform: translateY(16px)  rotate(5deg); }
+      65%       { transform: translateY(-20px) rotate(-6deg); }
+    }
+
+    @keyframes spin-slow {
+      from { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.10)) rotate(0deg); }
+      to   { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.10)) rotate(360deg); }
+    }
+
     /* ── Background blobs (subtle) ──────────────────────────────── */
     .bg-blob {
       position: fixed;
@@ -239,6 +298,10 @@
 
   <div class="bg-blob blob-1"></div>
   <div class="bg-blob blob-2"></div>
+
+  <div class="banana banana-1">🍌</div>
+  <div class="banana banana-2">🍌</div>
+  <div class="banana banana-3">🍌</div>
 
   <span class="top-label">Sculpt</span>
 
